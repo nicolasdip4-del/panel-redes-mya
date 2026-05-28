@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panel Redes · MYA Equipamientos</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <style>
+    .card { transition: transform .2s, box-shadow .2s; }
+    .card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,.12); }
+    .photo-wrap { cursor: pointer; }
+    .photo-wrap .cam-overlay { opacity: 0; transition: opacity .2s; }
+    .photo-wrap:hover .cam-overlay { opacity: 1; }
+    .social-link { transition: transform .15s; display: inline-flex; }
+    .social-link:hover { transform: scale(1.15); }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+  </style>
+</head>
+<body class="bg-slate-100 min-h-screen font-sans">
+
+<!-- ── Header ──────────────────────────────────────────── -->
+<header class="bg-gradient-to-r from-slate-900 to-blue-900 text-white shadow-xl">
+  <div class="max-w-screen-xl mx-auto px-5 py-4 flex items-center justify-between gap-4 flex-wrap">
+    <div>
+      <h1 class="text-xl font-bold tracking-tight">Panel Redes Sociales</h1>
+      <p class="text-slate-300 text-xs mt-0.5">M&A Equipamientos Comerciales</p>
+    </div>
+    <div id="stats-bar" class="flex flex-wrap gap-3 text-xs text-slate-300">
+      <span id="stat-total"></span>
+      <span id="stat-ig" class="text-pink-300"></span>
+      <span id="stat-tt" class="text-slate-300"></span>
+      <span id="stat-fb" class="text-blue-300"></span>
+      <span id="stat-warn" class="text-red-300"></span>
+    </div>
+  </div>
+</header>
+
+<!-- ── Filters ──────────────────────────────────────────── -->
+<div class="max-w-screen-xl mx-auto px-4 py-4">
+  <div class="bg-white rounded-2xl shadow-sm px-4 py-3 flex flex-wrap gap-3 items-center">
+    <div class="relative min-w-48 flex-1">
+      <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+      <input id="search" type="text" placeholder="Buscar vendedor..."
+        class="w-full pl-8 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300">
+    </div>
+    <select id="filter-area"
+      class="py-2 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white">
+      <option value="">Todas las sucursales</option>
+    </select>
+    <select id="filter-red"
+      class="py-2 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white">
+      <option value="">Todas las redes</option>
+      <option value="instagram">Con Instagram</option>
+      <option value="tiktok">Con TikTok</option>
+      <option value="facebook">Con Facebook</option>
+      <option value="completo">Completos (3 redes)</option>
+      <option value="incompleto">Incompletos</option>
+      <option value="sin-redes">Sin redes</option>
+    </select>
+    <span id="count" class="text-xs text-slate-400 ml-auto whitespace-nowrap"></span>
+  </div>
+</div>
+
+<!-- ── Legend ──────────────────────────────────────────── -->
+<div class="max-w-screen-xl mx-auto px-4 pb-2">
+  <div class="flex gap-4 text-xs text-slate-500">
+    <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-green-500 inline-block"></span>Publicó esta semana</span>
+    <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-yellow-400 inline-block"></span>Este mes</span>
+    <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-red-400 inline-block"></span>Hace más de un mes</span>
+    <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-slate-300 inline-block"></span>Sin datos</span>
+  </div>
+</div>
+
+<!-- ── Grid ─────────────────────────────────────────────── -->
+<div class="max-w-screen-xl mx-auto px-4 pb-10">
+  <div id="grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4"></div>
+  <div id="loading" class="flex flex-col items-center py-20 text-slate-400 gap-3">
+    <i class="fas fa-spinner fa-spin text-4xl text-blue-400"></i>
+    <p class="text-sm">Cargando vendedores...</p>
+  </div>
+</div>
+
+<!-- ── Upload input ─────────────────────────────────────── -->
+<input type="file" id="file-input" accept="image/*" class="hidden">
+
+<!-- ── Toast ────────────────────────────────────────────── -->
+<div id="toast" class="fixed bottom-5 right-5 hidden bg-slate-800 text-white text-sm px-4 py-2.5 rounded-xl shadow-xl"></div>
+
+<script>
+// ── Firebase ────────────────────────────────────────────────
+firebase.initializeApp({
+  apiKey: "AIzaSyClY_ZLLbikl_iQo69DnooLiFlFZ9aXB1M",
+  authDomain: "geotracker-ce9e4.firebaseapp.com",
+  projectId: "geotracker-ce9e4",
+  storageBucket: "geotracker-ce9e4.firebasestorage.app",
+  messagingSenderId: "423169527584",
+  appId: "1:423169527584:web:c3cd6d9683c5b6f97a5145",
+});
+const storage  = firebase.storage();
+const db       = firebase.firestore();
+const auth     = firebase.auth();
+auth.signInAnonymously().catch(() => {});
+
+// ── Config ──────────────────────────────────────────────────
+const SHEET_ID  = '1VNDYPC2Uw3Yq856In5hpdfR0ZrmuOWnZov4_LwXF79s';
+const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=0`;
+
+const AREA_COLORS = {
+  'SALTA':            'bg-purple-100 text-purple-800',
+  'JUJUY':            'bg-sky-100 text-sky-800',
+  'SANTIAGO':         'bg-green-100 text-green-800',
+  'NORTE INTERIOR':   'bg-amber-100 text-amber-800',
+  'NORTE CENTR':      'bg-orange-100 text-orange-800',
+  'TUCUMAN CAPITAL':  'bg-red-100 text-red-800',
+  'TUCUMAN INTERIOR': 'bg-rose-100 text-rose-800',
+  'LA RIOJA':         'bg-indigo-100 text-indigo-800',
+  'CATAMARCA':        'bg-teal-100 text-teal-800',
+  'CORDOBA':          'bg-cyan-100 text-cyan-800',
+};
+
+// ── State ───────────────────────────────────────────────────
+let allVendors = [];
+let photos     = {};    // key → url
+let lastPosts  = {};    // key → { instagram, tiktok, facebook }
+let uploadKey  = null;
+
+// ── Helpers ─────────────────────────────────────────────────
+function vendorKey(nombre) {
+  return (nombre || '').toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+}
+
+function extractHandle(url) {
+  if (!url) return null;
+  const clean = url.replace(/\?.*$/, '').replace(/\/$/, '');
+  return clean.split('/').pop() || null;
+}
+
+function timeAgo(dateStr) {
+  if (!dateStr) return null;
+  const d = new Date(dateStr);
+  if (isNaN(d)) return null;
+  const days = Math.floor((Date.now() - d) / 86400000);
+  if (days === 0) return 'hoy';
+  if (days === 1) return 'ayer';
+  if (days < 7)  return `${days}d`;
+  if (days < 30) return `${Math.floor(days/7)}sem`;
+  if (days < 365)return `${Math.floor(days/30)}m`;
+  return '+1 año';
+}
+
+function dateColor(dateStr) {
+  if (!dateStr) return 'text-slate-300';
+  const days = Math.floor((Date.now() - new Date(dateStr)) / 86400000);
+  if (days <= 7)  return 'text-green-600 font-semibold';
+  if (days <= 30) return 'text-yellow-500 font-semibold';
+  return 'text-red-500 font-semibold';
+}
+
+function initials(nombre) {
+  return (nombre || '').trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase();
+}
+
+function showToast(msg, error = false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `fixed bottom-5 right-5 text-sm px-4 py-2.5 rounded-xl shadow-xl text-white ${error ? 'bg-red-600' : 'bg-slate-800'}`;
+  t.classList.remove('hidden');
+  setTimeout(() => t.classList.add('hidden'), 3000);
+}
+
+// ── Load data ────────────────────────────────────────────────
+function loadVendors() {
+  return new Promise(resolve => {
+    Papa.parse(SHEET_URL, {
+      download: true, header: true, skipEmptyLines: true,
+      complete: r => resolve(r.data),
+      error: () => resolve([]),
+    });
+  });
+}
+
+async function loadPhotos() {
+  try {
+    const snap = await db.collection('redesPhotos').get();
+    snap.forEach(doc => { photos[doc.id] = doc.data().url; });
+  } catch(e) {}
+}
+
+async function loadLastPosts() {
+  try {
+    const snap = await db.collection('redesLastPosts').get();
+    snap.forEach(doc => { lastPosts[doc.id] = doc.data(); });
+  } catch(e) {}
+}
+
+// ── Card ─────────────────────────────────────────────────────
+function socialRow(iconClass, colorClass, url, lastPost) {
+  const handle = extractHandle(url);
+  const ago    = timeAgo(lastPost);
+  const color  = dateColor(lastPost);
+
+  if (!url) return `
+    <div class="flex items-center gap-1.5 text-slate-200">
+      <i class="${iconClass} text-xs w-3.5 text-center"></i>
+      <span class="text-xs italic text-slate-300">—</span>
+    </div>`;
+
+  return `
+    <div class="flex items-center gap-1.5">
+      <a href="${url}" target="_blank" class="social-link ${colorClass}">
+        <i class="${iconClass} text-xs w-3.5 text-center"></i>
+      </a>
+      <span class="text-xs text-slate-500 truncate flex-1 max-w-20" title="${handle}">@${handle}</span>
+      <span class="text-xs ${ago ? color : 'text-slate-300'}">${ago || '—'}</span>
+    </div>`;
+}
+
+function renderCard(v) {
+  const key    = vendorKey(v['Nombre completo']);
+  const photo  = photos[key];
+  const posts  = lastPosts[key] || {};
+  const area   = (v['Area'] || '').trim();
+  const nombre = (v['Nombre completo'] || '').trim();
+  const ig     = (v['Instagram'] || '').trim();
+  const tt     = (v['TikTok'] || '').trim();
+  const fb     = (v['Fan Page'] || '').trim();
+  const wa     = (v['Número de Whatsapp Corporativo'] || '').trim();
+  const badge  = AREA_COLORS[area] || 'bg-slate-100 text-slate-600';
+
+  const displayName = nombre.split(/\s+/).slice(0, 3).join(' ');
+
+  const photoHTML = photo
+    ? `<img src="${photo}" class="w-full h-full object-cover" id="img-${key}" alt="${nombre}">`
+    : `<span class="text-2xl font-bold text-slate-400" id="img-${key}">${initials(nombre)}</span>`;
+
+  return `
+    <div class="card bg-white rounded-2xl shadow-sm p-3 flex flex-col gap-2.5"
+         data-key="${key}" data-area="${area}"
+         data-ig="${!!ig}" data-tt="${!!tt}" data-fb="${!!fb}">
+
+      <!-- Photo -->
+      <div class="photo-wrap relative mx-auto" onclick="triggerUpload('${key}')">
+        <div class="w-16 h-16 rounded-full overflow-hidden bg-slate-100 border-2 border-slate-200 flex items-center justify-center" id="photo-wrap-${key}">
+          ${photoHTML}
+        </div>
+        <div class="cam-overlay absolute inset-0 rounded-full bg-black/50 flex items-center justify-center">
+          <i class="fas fa-camera text-white text-sm"></i>
+        </div>
+        <div id="upload-spinner-${key}" class="hidden absolute inset-0 rounded-full bg-black/60 flex items-center justify-center">
+          <i class="fas fa-spinner fa-spin text-white text-sm"></i>
+        </div>
+      </div>
+
+      <!-- Name & Area -->
+      <div class="text-center leading-tight">
+        <p class="text-xs font-semibold text-slate-700">${displayName}</p>
+        <span class="inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${badge}">${area}</span>
+      </div>
+
+      <!-- Social -->
+      <div class="flex flex-col gap-1 border-t border-slate-100 pt-2">
+        ${socialRow('fab fa-instagram', 'text-pink-500 hover:text-pink-600', ig, posts.instagram)}
+        ${socialRow('fab fa-tiktok',    'text-slate-700 hover:text-slate-900', tt, posts.tiktok)}
+        ${socialRow('fab fa-facebook',  'text-blue-500 hover:text-blue-700', fb, posts.facebook)}
+      </div>
+
+      <!-- WhatsApp -->
+      ${wa ? `
+        <a href="https://wa.me/54${wa}" target="_blank"
+           class="flex items-center justify-center gap-1.5 py-1 bg-green-50 hover:bg-green-100 text-green-700 rounded-lg text-xs font-medium transition-colors">
+          <i class="fab fa-whatsapp"></i> ${wa}
+        </a>` : ''}
+    </div>`;
+}
+
+// ── Render list ───────────────────────────────────────────────
+function renderAll() {
+  const search = document.getElementById('search').value.toLowerCase();
+  const area   = document.getElementById('filter-area').value;
+  const red    = document.getElementById('filter-red').value;
+
+  const filtered = allVendors.filter(v => {
+    const nombre = (v['Nombre completo'] || '').toLowerCase();
+    const vArea  = (v['Area'] || '').trim();
+    const ig     = !!(v['Instagram'] || '').trim();
+    const tt     = !!(v['TikTok'] || '').trim();
+    const fb     = !!(v['Fan Page'] || '').trim();
+
+    if (search && !nombre.includes(search) && !vArea.toLowerCase().includes(search)) return false;
+    if (area && vArea !== area) return false;
+    if (red === 'instagram'  && !ig) return false;
+    if (red === 'tiktok'     && !tt) return false;
+    if (red === 'facebook'   && !fb) return false;
+    if (red === 'completo'   && !(ig && tt && fb)) return false;
+    if (red === 'incompleto' && ig && tt && fb) return false;
+    if (red === 'incompleto' && !ig && !tt && !fb) return false;
+    if (red === 'sin-redes'  && (ig || tt || fb)) return false;
+    return true;
+  });
+
+  document.getElementById('grid').innerHTML = filtered.map(renderCard).join('');
+  document.getElementById('count').textContent = `${filtered.length} vendedor${filtered.length !== 1 ? 'es' : ''}`;
+}
+
+function buildAreaFilter() {
+  const areas = [...new Set(allVendors.map(v => (v['Area'] || '').trim()).filter(Boolean))].sort();
+  const sel = document.getElementById('filter-area');
+  areas.forEach(a => {
+    const o = document.createElement('option');
+    o.value = a; o.textContent = a;
+    sel.appendChild(o);
+  });
+}
+
+function renderStats() {
+  const n     = allVendors.length;
+  const ig    = allVendors.filter(v => v['Instagram']).length;
+  const tt    = allVendors.filter(v => v['TikTok']).length;
+  const fb    = allVendors.filter(v => v['Fan Page']).length;
+  const noRed = allVendors.filter(v => !v['Instagram'] && !v['TikTok'] && !v['Fan Page']).length;
+  document.getElementById('stat-total').textContent = `👥 ${n} vendedores`;
+  document.getElementById('stat-ig').textContent    = `📸 IG: ${ig}`;
+  document.getElementById('stat-tt').textContent    = `🎵 TK: ${tt}`;
+  document.getElementById('stat-fb').textContent    = `👍 FB: ${fb}`;
+  if (noRed > 0) document.getElementById('stat-warn').textContent = `⚠️ Sin redes: ${noRed}`;
+}
+
+// ── Photo upload ──────────────────────────────────────────────
+window.triggerUpload = function(key) {
+  uploadKey = key;
+  document.getElementById('file-input').click();
+};
+
+document.getElementById('file-input').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file || !uploadKey) return;
+
+  const key     = uploadKey;
+  const spinner = document.getElementById(`upload-spinner-${key}`);
+  if (spinner) spinner.classList.remove('hidden');
+
+  try {
+    const ref = storage.ref(`redesVendedores/${key}/foto.jpg`);
+    await ref.put(file, { contentType: file.type });
+    const url = await ref.getDownloadURL();
+
+    await db.collection('redesPhotos').doc(key).set({ url, updatedAt: new Date().toISOString() });
+    photos[key] = url;
+
+    const wrap = document.getElementById(`photo-wrap-${key}`);
+    if (wrap) {
+      wrap.innerHTML = `<img src="${url}" class="w-full h-full object-cover" id="img-${key}" alt="">`;
+    }
+    showToast('Foto actualizada ✓');
+  } catch(err) {
+    console.error(err);
+    showToast('Error al subir la foto. Verificá permisos de Firebase.', true);
+  }
+
+  if (spinner) spinner.classList.add('hidden');
+  e.target.value = '';
+  uploadKey = null;
+});
+
+// ── Init ──────────────────────────────────────────────────────
+async function init() {
+  const [vendors] = await Promise.all([loadVendors(), loadPhotos(), loadLastPosts()]);
+  allVendors = vendors;
+
+  const loading = document.getElementById('loading');
+  if (loading) loading.remove();
+
+  buildAreaFilter();
+  renderStats();
+  renderAll();
+
+  document.getElementById('search').addEventListener('input', renderAll);
+  document.getElementById('filter-area').addEventListener('change', renderAll);
+  document.getElementById('filter-red').addEventListener('change', renderAll);
+}
+
+init();
+</script>
+</body>
+</html>
