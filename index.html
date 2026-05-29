@@ -354,7 +354,6 @@ document.getElementById('file-input').addEventListener('change', async (e) => {
     form.append('file', file);
     form.append('upload_preset', CLOUDINARY_PRESET);
     form.append('public_id', `redesVendedores/${key}`);
-    form.append('overwrite', 'true');
 
     const resp = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`, {
       method: 'POST', body: form,
