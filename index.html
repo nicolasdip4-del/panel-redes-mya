@@ -253,10 +253,7 @@ function embedUrl(url) {
     const user = extractHandle(url);
     return user ? `https://www.instagram.com/${user}/embed/` : null;
   }
-  if (url.includes('tiktok.com/@')) {
-    const user = extractHandle(url);
-    return user ? `https://www.tiktok.com/embed/user/${user.replace('@','')}` : null;
-  }
+  // TikTok no soporta embed de perfiles (solo videos individuales)
   return null;
 }
 
@@ -282,14 +279,14 @@ function socialRow(iconClass, colorClass, url, lastPost, vendorName) {
         <i class="${iconClass} text-xs w-3.5 text-center"></i>
       </a>
       <span class="text-xs truncate flex-1 max-w-20 ${hasEmbed ? 'text-blue-500 hover:text-blue-700 hover:underline' : 'text-slate-500'}"
-            ${handleClick}>@${handle}</span>
+            ${handleClick}>${handle.startsWith('@') ? handle : '@' + handle}</span>
       <span class="text-xs ${ago ? color : 'text-slate-300'}">${ago || '—'}</span>
       <!-- Tooltip -->
       <div class="absolute left-0 bottom-full mb-1.5 hidden group-hover/row:flex flex-col gap-1.5
                   bg-slate-900 text-white rounded-xl p-3 shadow-2xl z-50 w-64 border border-slate-700 pointer-events-none">
         <div class="flex items-center gap-2">
           <i class="${iconClass} ${colorClass} text-sm"></i>
-          <span class="font-semibold text-sm">@${handle}</span>
+          <span class="font-semibold text-sm">${handle.startsWith('@') ? handle : '@' + handle}</span>
           ${hasEmbed ? '<span class="ml-auto text-xs text-blue-400">click para preview</span>' : ''}
         </div>
         <p class="text-xs text-slate-400 break-all leading-relaxed">${url}</p>
