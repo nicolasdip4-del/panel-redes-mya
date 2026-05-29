@@ -8,7 +8,6 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <style>
@@ -99,14 +98,16 @@ firebase.initializeApp({
   apiKey: "AIzaSyClY_ZLLbikl_iQo69DnooLiFlFZ9aXB1M",
   authDomain: "geotracker-ce9e4.firebaseapp.com",
   projectId: "geotracker-ce9e4",
-  storageBucket: "geotracker-ce9e4.firebasestorage.app",
   messagingSenderId: "423169527584",
   appId: "1:423169527584:web:c3cd6d9683c5b6f97a5145",
 });
-const storage  = firebase.storage();
-const db       = firebase.firestore();
-const auth     = firebase.auth();
+const db   = firebase.firestore();
+const auth = firebase.auth();
 auth.signInAnonymously().catch(() => {});
+
+// ── Cloudinary ──────────────────────────────────────────────
+const CLOUDINARY_CLOUD  = 'dfkfggvhz';
+const CLOUDINARY_PRESET = 'x5gqnsmf';
 
 // ── Config ──────────────────────────────────────────────────
 const SHEET_ID  = '1VNDYPC2Uw3Yq856In5hpdfR0ZrmuOWnZov4_LwXF79s';
@@ -334,7 +335,7 @@ function renderStats() {
   if (noRed > 0) document.getElementById('stat-warn').textContent = `⚠️ Sin redes: ${noRed}`;
 }
 
-// ── Photo upload ──────────────────────────────────────────────
+// ── Photo upload (Cloudinary) ─────────────────────────────────
 window.triggerUpload = function(key) {
   uploadKey = key;
   document.getElementById('file-input').click();
@@ -349,21 +350,29 @@ document.getElementById('file-input').addEventListener('change', async (e) => {
   if (spinner) spinner.classList.remove('hidden');
 
   try {
-    const ref = storage.ref(`redesVendedores/${key}/foto.jpg`);
-    await ref.put(file, { contentType: file.type });
-    const url = await ref.getDownloadURL();
+    const form = new FormData();
+    form.append('file', file);
+    form.append('upload_preset', CLOUDINARY_PRESET);
+    form.append('public_id', `redesVendedores/${key}`);
+    form.append('overwrite', 'true');
+
+    const resp = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`, {
+      method: 'POST', body: form,
+    });
+    if (!resp.ok) throw new Error(await resp.text());
+    const data = await resp.json();
+    const url  = data.secure_url;
 
     await db.collection('redesPhotos').doc(key).set({ url, updatedAt: new Date().toISOString() });
     photos[key] = url;
 
     const wrap = document.getElementById(`photo-wrap-${key}`);
-    if (wrap) {
-      wrap.innerHTML = `<img src="${url}" class="w-full h-full object-cover" id="img-${key}" alt="">`;
-    }
+    if (wrap) wrap.innerHTML = `<img src="${url}" class="w-full h-full object-cover" id="img-${key}" alt="">`;
+
     showToast('Foto actualizada ✓');
   } catch(err) {
     console.error(err);
-    showToast('Error al subir la foto. Verificá permisos de Firebase.', true);
+    showToast('Error al subir la foto.', true);
   }
 
   if (spinner) spinner.classList.add('hidden');
