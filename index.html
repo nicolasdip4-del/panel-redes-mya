@@ -41,9 +41,25 @@
   </div>
 </header>
 
-<!-- ── Filters ──────────────────────────────────────────── -->
-<div class="max-w-screen-xl mx-auto px-4 py-4">
-  <div class="bg-white rounded-2xl shadow-sm px-4 py-3 flex flex-wrap gap-3 items-center">
+<!-- ── Tabs ───────────────────────────────────────────────── -->
+<div class="max-w-screen-xl mx-auto px-4 pt-4 pb-2">
+  <div class="flex gap-1">
+    <button id="tab-vendedores" onclick="setTab('vendedores')"
+      class="tab-btn px-4 py-2 text-sm font-semibold rounded-t-xl border-b-2 border-blue-500 text-blue-600 bg-white transition-colors">
+      <i class="fas fa-users mr-1.5"></i>Vendedores
+    </button>
+    <button id="tab-resumen" onclick="setTab('resumen')"
+      class="tab-btn px-4 py-2 text-sm font-semibold rounded-t-xl border-b-2 border-transparent text-slate-400 hover:text-slate-600 bg-slate-100 hover:bg-white transition-colors">
+      <i class="fas fa-chart-bar mr-1.5"></i>Resumen
+    </button>
+  </div>
+</div>
+
+<!-- ── Vista Vendedores ───────────────────────────────────── -->
+<div id="vista-vendedores" class="max-w-screen-xl mx-auto px-4">
+
+  <!-- Filtros -->
+  <div class="bg-white rounded-2xl shadow-sm px-4 py-3 flex flex-wrap gap-3 items-center mb-4">
     <div class="relative min-w-48 flex-1">
       <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
       <input id="search" type="text" placeholder="Buscar vendedor..."
@@ -64,48 +80,32 @@
       <option value="sin-redes">Sin redes</option>
     </select>
     <span id="count" class="text-xs text-slate-400 ml-auto whitespace-nowrap"></span>
-    <button id="btn-resumen" onclick="toggleResumen()"
-      class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors whitespace-nowrap">
-      <i class="fas fa-chart-bar"></i> Resumen
-    </button>
+  </div>
+
+  <!-- Grid -->
+  <div id="grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 pb-10"></div>
+  <div id="loading" class="flex flex-col items-center py-20 text-slate-400 gap-3">
+    <i class="fas fa-spinner fa-spin text-4xl text-blue-400"></i>
+    <p class="text-sm">Cargando vendedores...</p>
   </div>
 </div>
 
-<!-- ── Resumen por sucursal ──────────────────────────────── -->
-<div id="panel-resumen" class="hidden max-w-screen-xl mx-auto px-4 pb-4">
+<!-- ── Vista Resumen ──────────────────────────────────────── -->
+<div id="vista-resumen" class="hidden max-w-screen-xl mx-auto px-4 pb-10">
   <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
-    <table class="w-full text-xs">
+    <table class="w-full text-sm">
       <thead>
-        <tr class="bg-slate-50 border-b border-slate-100">
-          <th class="text-left px-4 py-2.5 font-semibold text-slate-600">Sucursal</th>
-          <th class="text-center px-3 py-2.5 font-semibold text-slate-600">Total</th>
-          <th class="text-center px-3 py-2.5 font-semibold text-pink-500"><i class="fab fa-instagram"></i> IG</th>
-          <th class="text-center px-3 py-2.5 font-semibold text-slate-700"><i class="fab fa-tiktok"></i> TK</th>
-          <th class="text-center px-3 py-2.5 font-semibold text-blue-500"><i class="fab fa-facebook"></i> FB</th>
-          <th class="text-center px-3 py-2.5 font-semibold text-slate-400">Sin redes</th>
+        <tr class="bg-slate-50 border-b border-slate-200">
+          <th class="text-left px-5 py-3 font-semibold text-slate-600">Sucursal</th>
+          <th class="text-center px-4 py-3 font-semibold text-slate-600">Total</th>
+          <th class="text-center px-4 py-3 font-semibold text-pink-500"><i class="fab fa-instagram"></i> Instagram</th>
+          <th class="text-center px-4 py-3 font-semibold text-slate-700"><i class="fab fa-tiktok"></i> TikTok</th>
+          <th class="text-center px-4 py-3 font-semibold text-blue-500"><i class="fab fa-facebook"></i> Facebook</th>
+          <th class="text-center px-4 py-3 font-semibold text-red-400">Sin redes</th>
         </tr>
       </thead>
       <tbody id="resumen-body"></tbody>
     </table>
-  </div>
-</div>
-
-<!-- ── Legend ──────────────────────────────────────────── -->
-<div class="max-w-screen-xl mx-auto px-4 pb-2">
-  <div class="flex gap-4 text-xs text-slate-500">
-    <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-green-500 inline-block"></span>Publicó esta semana</span>
-    <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-yellow-400 inline-block"></span>Este mes</span>
-    <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-red-400 inline-block"></span>Hace más de un mes</span>
-    <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-slate-300 inline-block"></span>Sin datos</span>
-  </div>
-</div>
-
-<!-- ── Grid ─────────────────────────────────────────────── -->
-<div class="max-w-screen-xl mx-auto px-4 pb-10">
-  <div id="grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4"></div>
-  <div id="loading" class="flex flex-col items-center py-20 text-slate-400 gap-3">
-    <i class="fas fa-spinner fa-spin text-4xl text-blue-400"></i>
-    <p class="text-sm">Cargando vendedores...</p>
   </div>
 </div>
 
@@ -625,18 +625,23 @@ function renderResumen() {
 
 window.filtrarSucursal = function(area) {
   document.getElementById('filter-area').value = area;
-  document.getElementById('panel-resumen').classList.add('hidden');
-  document.getElementById('btn-resumen').innerHTML = '<i class="fas fa-chart-bar"></i> Resumen';
+  setTab('vendedores');
   renderAll();
 };
 
-window.toggleResumen = function() {
-  const panel = document.getElementById('panel-resumen');
-  const btn   = document.getElementById('btn-resumen');
-  const open  = panel.classList.toggle('hidden');
-  btn.innerHTML = open
-    ? '<i class="fas fa-chart-bar"></i> Resumen'
-    : '<i class="fas fa-times"></i> Cerrar';
+window.setTab = function(tab) {
+  const isVend = tab === 'vendedores';
+  document.getElementById('vista-vendedores').classList.toggle('hidden', !isVend);
+  document.getElementById('vista-resumen').classList.toggle('hidden', isVend);
+
+  const activeClass   = ['border-blue-500', 'text-blue-600', 'bg-white'];
+  const inactiveClass = ['border-transparent', 'text-slate-400', 'bg-slate-100'];
+
+  const tVend = document.getElementById('tab-vendedores');
+  const tRes  = document.getElementById('tab-resumen');
+
+  activeClass.forEach(c => { tVend.classList.toggle(c, isVend);  tRes.classList.toggle(c, !isVend); });
+  inactiveClass.forEach(c => { tVend.classList.toggle(c, !isVend); tRes.classList.toggle(c, isVend); });
 };
 
 // ── Init ──────────────────────────────────────────────────────
