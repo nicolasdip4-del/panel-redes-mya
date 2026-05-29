@@ -216,12 +216,26 @@ function socialRow(iconClass, colorClass, url, lastPost) {
     </div>`;
 
   return `
-    <div class="flex items-center gap-1.5">
+    <div class="flex items-center gap-1.5 relative group/row">
       <a href="${url}" target="_blank" class="social-link ${colorClass}">
         <i class="${iconClass} text-xs w-3.5 text-center"></i>
       </a>
-      <span class="text-xs text-slate-500 truncate flex-1 max-w-20" title="${handle}">@${handle}</span>
+      <span class="text-xs text-slate-500 truncate flex-1 max-w-20 cursor-default">@${handle}</span>
       <span class="text-xs ${ago ? color : 'text-slate-300'}">${ago || '—'}</span>
+      <!-- Tooltip preview -->
+      <div class="absolute left-0 bottom-full mb-1.5 hidden group-hover/row:flex flex-col gap-1.5
+                  bg-slate-900 text-white rounded-xl p-3 shadow-2xl z-50 w-64 border border-slate-700">
+        <div class="flex items-center gap-2">
+          <i class="${iconClass} ${colorClass} text-sm"></i>
+          <span class="font-semibold text-sm">@${handle}</span>
+        </div>
+        <p class="text-xs text-slate-400 break-all leading-relaxed">${url}</p>
+        <a href="${url}" target="_blank"
+           class="flex items-center justify-center gap-1.5 mt-0.5 py-1.5 bg-slate-700 hover:bg-slate-600
+                  rounded-lg text-xs font-medium transition-colors">
+          <i class="fas fa-external-link-alt text-xs"></i> Abrir perfil
+        </a>
+      </div>
     </div>`;
 }
 
