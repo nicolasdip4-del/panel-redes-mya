@@ -136,21 +136,11 @@
               onload="document.getElementById('modal-loading').style.display='none'"></iframe>
     </div>
     <!-- Footer -->
-    <div class="px-4 py-3 border-t border-slate-700 flex items-center gap-2">
+    <div class="px-4 py-3 border-t border-slate-700 flex items-center">
       <a id="modal-link" href="#" target="_blank"
-         class="flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 mr-auto">
-        <i class="fas fa-external-link-alt"></i> Abrir
+         class="flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300">
+        <i class="fas fa-external-link-alt"></i> Abrir perfil
       </a>
-      <button id="btn-publicó" onclick="marcarPublicó()"
-         class="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-500 active:bg-green-700
-                text-white text-xs font-semibold rounded-lg transition-colors">
-        <i class="fas fa-check"></i> Publicó hoy
-      </button>
-      <button id="btn-no-publicó" onclick="marcarNoPublicó()"
-         class="flex items-center gap-1.5 px-3 py-1.5 bg-slate-700 hover:bg-slate-600
-                text-slate-300 text-xs font-semibold rounded-lg transition-colors">
-        <i class="fas fa-clock"></i> Sin novedad
-      </button>
     </div>
   </div>
 </div>
@@ -477,97 +467,24 @@ document.getElementById('file-input').addEventListener('change', async (e) => {
 });
 
 // ── Embed Modal ───────────────────────────────────────────────
-let modalCtx = null; // { key, red, vendorName }
-
 window.openEmbed = function(url, iconClass, colorClass, nombre, handle) {
   const eUrl = embedUrl(url);
   if (!eUrl) return;
 
-  // Detectar qué red es
-  const red = url.includes('instagram.com') ? 'instagram'
-             : url.includes('tiktok.com')   ? 'tiktok'
-             : url.includes('facebook.com') ? 'facebook' : null;
-
-  modalCtx = { key: vendorKey(nombre), red, vendorName: nombre };
-
   document.getElementById('modal-icon').className     = `${iconClass} ${colorClass} text-lg`;
   document.getElementById('modal-name').textContent   = nombre;
-  document.getElementById('modal-handle').textContent = `@${handle}`;
+  document.getElementById('modal-handle').textContent = handle.startsWith('@') ? handle : '@' + handle;
   document.getElementById('modal-link').href          = url;
   document.getElementById('modal-loading').style.display = '';
   document.getElementById('embed-iframe').src         = eUrl;
   document.getElementById('embed-modal').classList.remove('hidden');
   document.body.style.overflow = 'hidden';
-
-  // Reset botones
-  const btn = document.getElementById('btn-publicó');
-  btn.textContent = ''; btn.innerHTML = '<i class="fas fa-check"></i> Publicó hoy';
-  btn.disabled = false;
 };
 
 window.closeModal = function() {
   document.getElementById('embed-modal').classList.add('hidden');
   document.getElementById('embed-iframe').src = '';
   document.body.style.overflow = '';
-  modalCtx = null;
-};
-
-async function savePostDate(key, red, dateStr) {
-  const API_KEY = 'AIzaSyClY_ZLLbikl_iQo69DnooLiFlFZ9aXB1M';
-  const PROJECT = 'geotracker-ce9e4';
-  const url = `https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents/redesLastPosts/${key}?key=${API_KEY}`;
-
-  // Leer existente para no pisar otras redes
-  let existing = {};
-  try {
-    const r = await fetch(url);
-    if (r.ok) {
-      const d = await r.json();
-      Object.entries(d.fields || {}).forEach(([k, v]) => { existing[k] = v.stringValue || ''; });
-    }
-  } catch(e) {}
-
-  existing[red] = dateStr;
-  existing.updatedAt = new Date().toISOString();
-
-  const fields = {};
-  Object.entries(existing).forEach(([k, v]) => { fields[k] = { stringValue: v }; });
-
-  const resp = await fetch(url, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ fields }),
-  });
-  return resp.ok;
-}
-
-window.marcarPublicó = async function() {
-  if (!modalCtx) return;
-  const { key, red, vendorName } = modalCtx;
-  const today = new Date().toISOString().split('T')[0];
-
-  const btn = document.getElementById('btn-publicó');
-  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-  btn.disabled = true;
-
-  const ok = await savePostDate(key, red, today);
-
-  if (ok) {
-    lastPosts[key] = lastPosts[key] || {};
-    lastPosts[key][red] = today;
-    renderAll();
-    btn.innerHTML = '<i class="fas fa-check"></i> Guardado ✓';
-    btn.classList.replace('bg-green-600', 'bg-green-800');
-    showToast(`${vendorName} — publicó hoy en ${red} ✓`);
-  } else {
-    btn.innerHTML = '<i class="fas fa-check"></i> Publicó hoy';
-    btn.disabled = false;
-    showToast('Error guardando', true);
-  }
-};
-
-window.marcarNoPublicó = function() {
-  closeModal();
 };
 
 // ── Resumen por sucursal ──────────────────────────────────────
