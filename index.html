@@ -64,6 +64,29 @@
       <option value="sin-redes">Sin redes</option>
     </select>
     <span id="count" class="text-xs text-slate-400 ml-auto whitespace-nowrap"></span>
+    <button id="btn-resumen" onclick="toggleResumen()"
+      class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors whitespace-nowrap">
+      <i class="fas fa-chart-bar"></i> Resumen
+    </button>
+  </div>
+</div>
+
+<!-- ── Resumen por sucursal ──────────────────────────────── -->
+<div id="panel-resumen" class="hidden max-w-screen-xl mx-auto px-4 pb-4">
+  <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
+    <table class="w-full text-xs">
+      <thead>
+        <tr class="bg-slate-50 border-b border-slate-100">
+          <th class="text-left px-4 py-2.5 font-semibold text-slate-600">Sucursal</th>
+          <th class="text-center px-3 py-2.5 font-semibold text-slate-600">Total</th>
+          <th class="text-center px-3 py-2.5 font-semibold text-pink-500"><i class="fab fa-instagram"></i> IG</th>
+          <th class="text-center px-3 py-2.5 font-semibold text-slate-700"><i class="fab fa-tiktok"></i> TK</th>
+          <th class="text-center px-3 py-2.5 font-semibold text-blue-500"><i class="fab fa-facebook"></i> FB</th>
+          <th class="text-center px-3 py-2.5 font-semibold text-slate-400">Sin redes</th>
+        </tr>
+      </thead>
+      <tbody id="resumen-body"></tbody>
+    </table>
   </div>
 </div>
 
@@ -547,6 +570,75 @@ window.marcarNoPublicó = function() {
   closeModal();
 };
 
+// ── Resumen por sucursal ──────────────────────────────────────
+function renderResumen() {
+  const areas = [...new Set(allVendors.map(v => (v['Area'] || '').trim()).filter(Boolean))].sort();
+  const tbody = document.getElementById('resumen-body');
+
+  const rows = areas.map(area => {
+    const vends  = allVendors.filter(v => (v['Area'] || '').trim() === area);
+    const total  = vends.length;
+    const ig     = vends.filter(v => v['Instagram']).length;
+    const tt     = vends.filter(v => v['TikTok']).length;
+    const fb     = vends.filter(v => v['Fan Page']).length;
+    const noRed  = vends.filter(v => !v['Instagram'] && !v['TikTok'] && !v['Fan Page']).length;
+
+    const bar = (n, t, color) => {
+      const pct = t ? Math.round(n / t * 100) : 0;
+      return `<div class="flex items-center gap-1.5 justify-center">
+        <span class="${n === t ? 'font-semibold' : ''}">${n}</span>
+        <div class="w-10 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+          <div class="h-full ${color} rounded-full" style="width:${pct}%"></div>
+        </div>
+      </div>`;
+    };
+
+    return `<tr class="border-b border-slate-50 hover:bg-slate-50 cursor-pointer transition-colors"
+                onclick="filtrarSucursal('${area}')">
+      <td class="px-4 py-2.5 font-medium text-slate-700">${area}</td>
+      <td class="px-3 py-2.5 text-center font-bold text-slate-800">${total}</td>
+      <td class="px-3 py-2.5">${bar(ig, total, 'bg-pink-400')}</td>
+      <td class="px-3 py-2.5">${bar(tt, total, 'bg-slate-600')}</td>
+      <td class="px-3 py-2.5">${bar(fb, total, 'bg-blue-400')}</td>
+      <td class="px-3 py-2.5 text-center ${noRed > 0 ? 'text-red-400 font-semibold' : 'text-slate-300'}">${noRed || '—'}</td>
+    </tr>`;
+  });
+
+  // Fila total
+  const tot   = allVendors.length;
+  const totIg = allVendors.filter(v => v['Instagram']).length;
+  const totTt = allVendors.filter(v => v['TikTok']).length;
+  const totFb = allVendors.filter(v => v['Fan Page']).length;
+  const totNo = allVendors.filter(v => !v['Instagram'] && !v['TikTok'] && !v['Fan Page']).length;
+
+  rows.push(`<tr class="bg-slate-50 font-semibold text-slate-600 border-t border-slate-200">
+    <td class="px-4 py-2.5">TOTAL</td>
+    <td class="px-3 py-2.5 text-center text-slate-800">${tot}</td>
+    <td class="px-3 py-2.5 text-center text-pink-500">${totIg}</td>
+    <td class="px-3 py-2.5 text-center text-slate-700">${totTt}</td>
+    <td class="px-3 py-2.5 text-center text-blue-500">${totFb}</td>
+    <td class="px-3 py-2.5 text-center ${totNo > 0 ? 'text-red-400' : 'text-slate-300'}">${totNo || '—'}</td>
+  </tr>`);
+
+  tbody.innerHTML = rows.join('');
+}
+
+window.filtrarSucursal = function(area) {
+  document.getElementById('filter-area').value = area;
+  document.getElementById('panel-resumen').classList.add('hidden');
+  document.getElementById('btn-resumen').innerHTML = '<i class="fas fa-chart-bar"></i> Resumen';
+  renderAll();
+};
+
+window.toggleResumen = function() {
+  const panel = document.getElementById('panel-resumen');
+  const btn   = document.getElementById('btn-resumen');
+  const open  = panel.classList.toggle('hidden');
+  btn.innerHTML = open
+    ? '<i class="fas fa-chart-bar"></i> Resumen'
+    : '<i class="fas fa-times"></i> Cerrar';
+};
+
 // ── Init ──────────────────────────────────────────────────────
 async function init() {
   const [vendors] = await Promise.all([loadVendors(), loadPhotos(), loadLastPosts()]);
@@ -557,6 +649,7 @@ async function init() {
 
   buildAreaFilter();
   renderStats();
+  renderResumen();
   renderAll();
 
   document.getElementById('search').addEventListener('input', renderAll);
