@@ -271,14 +271,14 @@ function socialRow(iconClass, colorClass, url, lastPost, vendorName) {
 
   const handleClick = hasEmbed
     ? `onclick="openEmbed('${url}','${iconClass}','${colorClass}','${vendorName}','${handle}')" style="cursor:pointer"`
-    : ``;
+    : `onclick="window.open('${url}','_blank')" style="cursor:pointer"`;
 
   return `
     <div class="flex items-center gap-1.5 relative group/row">
       <a href="${url}" target="_blank" class="social-link ${colorClass}">
         <i class="${iconClass} text-xs w-3.5 text-center"></i>
       </a>
-      <span class="text-xs truncate flex-1 max-w-20 ${hasEmbed ? 'text-blue-500 hover:text-blue-700 hover:underline' : 'text-slate-500'}"
+      <span class="text-xs truncate flex-1 max-w-20 text-blue-500 hover:text-blue-700 hover:underline"
             ${handleClick}>${handle.startsWith('@') ? handle : '@' + handle}</span>
       <span class="text-xs ${ago ? color : 'text-slate-300'}">${ago || '—'}</span>
       <!-- Tooltip -->
