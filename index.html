@@ -353,7 +353,7 @@ document.getElementById('file-input').addEventListener('change', async (e) => {
     const form = new FormData();
     form.append('file', file);
     form.append('upload_preset', CLOUDINARY_PRESET);
-    form.append('public_id', `redesVendedores/${key}`);
+    form.append('public_id', `redesVendedores/${key}_${Date.now()}`);
 
     const resp = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`, {
       method: 'POST', body: form,
