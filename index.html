@@ -384,9 +384,14 @@ function renderAll() {
 function buildAreaFilter() {
   const areas = [...new Set(allVendors.map(v => (v['Area'] || '').trim()).filter(Boolean))].sort();
   const sel = document.getElementById('filter-area');
+  const countByArea = {};
+  allVendors.forEach(v => {
+    const a = (v['Area'] || '').trim();
+    if (a) countByArea[a] = (countByArea[a] || 0) + 1;
+  });
   areas.forEach(a => {
     const o = document.createElement('option');
-    o.value = a; o.textContent = a;
+    o.value = a; o.textContent = `${a} (${countByArea[a] || 0})`;
     sel.appendChild(o);
   });
 }
