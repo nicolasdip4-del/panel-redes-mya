@@ -89,6 +89,40 @@
 <!-- ── Upload input ─────────────────────────────────────── -->
 <input type="file" id="file-input" accept="image/*" class="hidden">
 
+<!-- ── Embed Modal ───────────────────────────────────────── -->
+<div id="embed-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+  <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" onclick="closeModal()"></div>
+  <div class="relative bg-slate-900 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+    <!-- Header -->
+    <div id="modal-header" class="flex items-center gap-3 px-4 py-3 border-b border-slate-700">
+      <i id="modal-icon" class="text-lg"></i>
+      <div>
+        <p id="modal-name" class="text-white text-sm font-semibold"></p>
+        <p id="modal-handle" class="text-slate-400 text-xs"></p>
+      </div>
+      <button onclick="closeModal()" class="ml-auto text-slate-400 hover:text-white transition-colors">
+        <i class="fas fa-times text-lg"></i>
+      </button>
+    </div>
+    <!-- iFrame -->
+    <div class="relative bg-slate-800" style="height:520px">
+      <div id="modal-loading" class="absolute inset-0 flex items-center justify-center text-slate-400">
+        <i class="fas fa-spinner fa-spin text-2xl"></i>
+      </div>
+      <iframe id="embed-iframe" src="" class="w-full h-full border-0"
+              onload="document.getElementById('modal-loading').style.display='none'"></iframe>
+    </div>
+    <!-- Footer -->
+    <div class="px-4 py-3 border-t border-slate-700 flex justify-between items-center">
+      <span class="text-xs text-slate-500">Vista previa del perfil</span>
+      <a id="modal-link" href="#" target="_blank"
+         class="flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300">
+        <i class="fas fa-external-link-alt"></i> Abrir en red social
+      </a>
+    </div>
+  </div>
+</div>
+
 <!-- ── Toast ────────────────────────────────────────────── -->
 <div id="toast" class="fixed bottom-5 right-5 hidden bg-slate-800 text-white text-sm px-4 py-2.5 rounded-xl shadow-xl"></div>
 
@@ -204,10 +238,24 @@ async function loadLastPosts() {
 }
 
 // ── Card ─────────────────────────────────────────────────────
-function socialRow(iconClass, colorClass, url, lastPost) {
-  const handle = extractHandle(url);
-  const ago    = timeAgo(lastPost);
-  const color  = dateColor(lastPost);
+function embedUrl(url) {
+  if (!url) return null;
+  if (url.includes('instagram.com')) {
+    const user = extractHandle(url);
+    return user ? `https://www.instagram.com/${user}/embed/` : null;
+  }
+  if (url.includes('tiktok.com/@')) {
+    const user = extractHandle(url);
+    return user ? `https://www.tiktok.com/embed/user/${user.replace('@','')}` : null;
+  }
+  return null;
+}
+
+function socialRow(iconClass, colorClass, url, lastPost, vendorName) {
+  const handle  = extractHandle(url);
+  const ago     = timeAgo(lastPost);
+  const color   = dateColor(lastPost);
+  const hasEmbed = !!embedUrl(url);
 
   if (!url) return `
     <div class="flex items-center gap-1.5 text-slate-200">
@@ -215,26 +263,27 @@ function socialRow(iconClass, colorClass, url, lastPost) {
       <span class="text-xs italic text-slate-300">—</span>
     </div>`;
 
+  const handleClick = hasEmbed
+    ? `onclick="openEmbed('${url}','${iconClass}','${colorClass}','${vendorName}','${handle}')" style="cursor:pointer"`
+    : ``;
+
   return `
     <div class="flex items-center gap-1.5 relative group/row">
       <a href="${url}" target="_blank" class="social-link ${colorClass}">
         <i class="${iconClass} text-xs w-3.5 text-center"></i>
       </a>
-      <span class="text-xs text-slate-500 truncate flex-1 max-w-20 cursor-default">@${handle}</span>
+      <span class="text-xs truncate flex-1 max-w-20 ${hasEmbed ? 'text-blue-500 hover:text-blue-700 hover:underline' : 'text-slate-500'}"
+            ${handleClick}>@${handle}</span>
       <span class="text-xs ${ago ? color : 'text-slate-300'}">${ago || '—'}</span>
-      <!-- Tooltip preview -->
+      <!-- Tooltip -->
       <div class="absolute left-0 bottom-full mb-1.5 hidden group-hover/row:flex flex-col gap-1.5
-                  bg-slate-900 text-white rounded-xl p-3 shadow-2xl z-50 w-64 border border-slate-700">
+                  bg-slate-900 text-white rounded-xl p-3 shadow-2xl z-50 w-64 border border-slate-700 pointer-events-none">
         <div class="flex items-center gap-2">
           <i class="${iconClass} ${colorClass} text-sm"></i>
           <span class="font-semibold text-sm">@${handle}</span>
+          ${hasEmbed ? '<span class="ml-auto text-xs text-blue-400">click para preview</span>' : ''}
         </div>
         <p class="text-xs text-slate-400 break-all leading-relaxed">${url}</p>
-        <a href="${url}" target="_blank"
-           class="flex items-center justify-center gap-1.5 mt-0.5 py-1.5 bg-slate-700 hover:bg-slate-600
-                  rounded-lg text-xs font-medium transition-colors">
-          <i class="fas fa-external-link-alt text-xs"></i> Abrir perfil
-        </a>
       </div>
     </div>`;
 }
@@ -283,9 +332,9 @@ function renderCard(v) {
 
       <!-- Social -->
       <div class="flex flex-col gap-1 border-t border-slate-100 pt-2">
-        ${socialRow('fab fa-instagram', 'text-pink-500 hover:text-pink-600', ig, posts.instagram)}
-        ${socialRow('fab fa-tiktok',    'text-slate-700 hover:text-slate-900', tt, posts.tiktok)}
-        ${socialRow('fab fa-facebook',  'text-blue-500 hover:text-blue-700', fb, posts.facebook)}
+        ${socialRow('fab fa-instagram', 'text-pink-500 hover:text-pink-600', ig, posts.instagram, nombre)}
+        ${socialRow('fab fa-tiktok',    'text-slate-700 hover:text-slate-900', tt, posts.tiktok, nombre)}
+        ${socialRow('fab fa-facebook',  'text-blue-500 hover:text-blue-700', fb, posts.facebook, nombre)}
       </div>
 
       <!-- WhatsApp -->
@@ -392,6 +441,27 @@ document.getElementById('file-input').addEventListener('change', async (e) => {
   e.target.value = '';
   uploadKey = null;
 });
+
+// ── Embed Modal ───────────────────────────────────────────────
+window.openEmbed = function(url, iconClass, colorClass, nombre, handle) {
+  const eUrl = embedUrl(url);
+  if (!eUrl) return;
+
+  document.getElementById('modal-icon').className  = `${iconClass} ${colorClass} text-lg`;
+  document.getElementById('modal-name').textContent  = nombre;
+  document.getElementById('modal-handle').textContent = `@${handle}`;
+  document.getElementById('modal-link').href         = url;
+  document.getElementById('modal-loading').style.display = '';
+  document.getElementById('embed-iframe').src        = eUrl;
+  document.getElementById('embed-modal').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+};
+
+window.closeModal = function() {
+  document.getElementById('embed-modal').classList.add('hidden');
+  document.getElementById('embed-iframe').src = '';
+  document.body.style.overflow = '';
+};
 
 // ── Init ──────────────────────────────────────────────────────
 async function init() {
