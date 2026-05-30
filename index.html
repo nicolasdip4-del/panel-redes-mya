@@ -321,6 +321,7 @@ function renderCard(v) {
   const tt     = (v['TikTok'] || '').trim();
   const fb     = (v['Fan Page'] || '').trim();
   const wa     = (v['Número de Whastapp Corporativo'] || '').trim();
+  const fuerza = (v['Fuerza de Venta'] || '').trim();
   const badge  = AREA_COLORS[area] || 'bg-slate-100 text-slate-600';
 
   const displayName = nombre.split(/\s+/).slice(0, 3).join(' ');
@@ -351,6 +352,7 @@ function renderCard(v) {
       <div class="text-center leading-tight">
         <p class="text-xs font-semibold text-slate-700">${displayName}</p>
         <span class="inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${badge}">${area}</span>
+        ${fuerza ? `<span class="inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-violet-100 text-violet-700">${fuerza}</span>` : ''}
       </div>
 
       <!-- Social -->
