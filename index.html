@@ -69,6 +69,10 @@
       class="py-2 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white">
       <option value="">Todas las sucursales</option>
     </select>
+    <select id="filter-fuerza"
+      class="py-2 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white">
+      <option value="">Todas las fuerzas</option>
+    </select>
     <select id="filter-red"
       class="py-2 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white">
       <option value="">Todas las redes</option>
@@ -371,15 +375,19 @@ function renderAll() {
   const area   = document.getElementById('filter-area').value;
   const red    = document.getElementById('filter-red').value;
 
+  const fuerza = document.getElementById('filter-fuerza').value;
+
   const filtered = allVendors.filter(v => {
-    const nombre = (v['Nombre completo'] || '').toLowerCase();
-    const vArea  = (v['Area'] || '').trim();
-    const ig     = !!(v['Instagram'] || '').trim();
-    const tt     = !!(v['TikTok'] || '').trim();
-    const fb     = !!(v['Fan Page'] || '').trim();
+    const nombre  = (v['Nombre completo'] || '').toLowerCase();
+    const vArea   = (v['Area'] || '').trim();
+    const vFuerza = (v['Fuerza de Venta'] || '').trim();
+    const ig      = !!(v['Instagram'] || '').trim();
+    const tt      = !!(v['TikTok'] || '').trim();
+    const fb      = !!(v['Fan Page'] || '').trim();
 
     if (search && !nombre.includes(search) && !vArea.toLowerCase().includes(search)) return false;
     if (area && vArea !== area) return false;
+    if (fuerza && vFuerza !== fuerza) return false;
     if (red === 'instagram'  && !ig) return false;
     if (red === 'tiktok'     && !tt) return false;
     if (red === 'facebook'   && !fb) return false;
@@ -405,6 +413,21 @@ function buildAreaFilter() {
   areas.forEach(a => {
     const o = document.createElement('option');
     o.value = a; o.textContent = `${a} (${countByArea[a] || 0})`;
+    sel.appendChild(o);
+  });
+}
+
+function buildFuerzaFilter() {
+  const fuerzas = [...new Set(allVendors.map(v => (v['Fuerza de Venta'] || '').trim()).filter(Boolean))].sort();
+  const sel = document.getElementById('filter-fuerza');
+  const count = {};
+  allVendors.forEach(v => {
+    const f = (v['Fuerza de Venta'] || '').trim();
+    if (f) count[f] = (count[f] || 0) + 1;
+  });
+  fuerzas.forEach(f => {
+    const o = document.createElement('option');
+    o.value = f; o.textContent = `${f} (${count[f] || 0})`;
     sel.appendChild(o);
   });
 }
@@ -570,12 +593,14 @@ async function init() {
   if (loading) loading.remove();
 
   buildAreaFilter();
+  buildFuerzaFilter();
   renderStats();
   renderResumen();
   renderAll();
 
   document.getElementById('search').addEventListener('input', renderAll);
   document.getElementById('filter-area').addEventListener('change', renderAll);
+  document.getElementById('filter-fuerza').addEventListener('change', renderAll);
   document.getElementById('filter-red').addEventListener('change', renderAll);
 }
 
