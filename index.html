@@ -892,8 +892,9 @@ function renderAdsTableFrom(data) {
     return;
   }
 
-  const fmt = (n) => n || n === 0 ? Number(n).toLocaleString('es-AR') : '—';
-  const money = (n) => n ? '$' + Number(n).toLocaleString('es-AR', { minimumFractionDigits: 2 }) : '—';
+  const adsNum = (v) => { const s = String(v ?? '').replace(',', '.').trim(); const n = parseFloat(s); return isNaN(n) ? 0 : n; };
+  const fmt = (n) => n || n === 0 ? adsNum(n).toLocaleString('es-AR') : '—';
+  const money = (n) => n ? '$' + adsNum(n).toLocaleString('es-AR', { minimumFractionDigits: 2 }) : '—';
 
   tbody.innerHTML = data.map(r => {
     const name = r['Vendedor'] || r['vendedor'] || '';
@@ -951,8 +952,9 @@ window.showAdsDetail = function(vendorName) {
   if (!camps.length) {
     tbody.innerHTML = '<tr><td colspan="15" class="text-center py-8 text-slate-400">Sin campanas activas</td></tr>';
   } else {
-    const fmt = (n) => n || n === 0 ? Number(n).toLocaleString('es-AR') : '—';
-    const money = (n) => n ? '$' + Number(n).toLocaleString('es-AR', { minimumFractionDigits: 2 }) : '—';
+    const adsNum = (v) => { const s = String(v ?? '').replace(',', '.').trim(); const n = parseFloat(s); return isNaN(n) ? 0 : n; };
+    const fmt = (n) => n || n === 0 ? adsNum(n).toLocaleString('es-AR') : '—';
+    const money = (n) => n ? '$' + adsNum(n).toLocaleString('es-AR', { minimumFractionDigits: 2 }) : '—';
     const estadoClass = (s) => s === 'ACTIVE' ? 'text-emerald-600' : 'text-slate-400';
     const antiguedadText = (d) => {
       if (!d && d !== 0) return '—';
