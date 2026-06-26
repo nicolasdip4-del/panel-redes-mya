@@ -136,6 +136,64 @@
 
 <!-- ── Vista Anuncios ─────────────────────────────────────── -->
 <div id="vista-anuncios" class="hidden max-w-screen-xl mx-auto px-4 pb-10">
+  <!-- Filtros -->
+  <div class="bg-white rounded-2xl shadow-sm px-4 py-3 flex flex-wrap gap-3 items-center mb-4">
+    <label class="text-xs font-semibold text-slate-500">Desde:</label>
+    <input id="ads-desde" type="date"
+      class="py-1.5 px-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300">
+    <label class="text-xs font-semibold text-slate-500">Hasta:</label>
+    <input id="ads-hasta" type="date"
+      class="py-1.5 px-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300">
+    <button onclick="applyDateFilter()"
+      class="py-1.5 px-3 text-xs font-semibold bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
+      <i class="fas fa-filter mr-1"></i>Filtrar
+    </button>
+    <button onclick="clearDateFilter()"
+      class="py-1.5 px-3 text-xs font-semibold bg-slate-200 text-slate-600 rounded-lg hover:bg-slate-300 transition-colors">
+      <i class="fas fa-times mr-1"></i>Limpiar
+    </button>
+    <span id="ads-range-info" class="text-xs text-slate-400 ml-auto"></span>
+  </div>
+
+  <!-- Vista detalle (cuando se clickea un vendedor) -->
+  <div id="ads-detail" class="hidden mb-4">
+    <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
+      <div class="px-5 py-3 border-b border-slate-100 flex items-center gap-2">
+        <button onclick="closeAdsDetail()"
+          class="text-sm text-blue-500 hover:text-blue-700 transition-colors">
+          <i class="fas fa-arrow-left mr-1"></i> Volver
+        </button>
+        <span class="text-xs font-semibold text-slate-500 uppercase tracking-wide ml-2">
+          <i class="fas fa-bullhorn text-blue-500 mr-1"></i> Campañas de:
+        </span>
+        <span id="ads-detail-vendor" class="text-sm font-bold text-slate-700"></span>
+        <span id="ads-detail-branch" class="text-xs text-slate-400"></span>
+        <span id="ads-detail-date" class="ml-auto text-xs text-slate-400"></span>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="bg-slate-50 border-b border-slate-200">
+              <th class="text-left px-4 py-3 font-semibold text-slate-600">Campana</th>
+              <th class="text-center px-3 py-3 font-semibold text-slate-600">Estado</th>
+              <th class="text-center px-3 py-3 font-semibold text-slate-600">Objetivo</th>
+              <th class="text-center px-3 py-3 font-semibold text-blue-600">Gasto</th>
+              <th class="text-center px-3 py-3 font-semibold text-slate-600">Impresiones</th>
+              <th class="text-center px-3 py-3 font-semibold text-slate-600">Clics</th>
+              <th class="text-center px-3 py-3 font-semibold text-amber-600">Leads</th>
+              <th class="text-center px-3 py-3 font-semibold text-slate-600">CTR</th>
+              <th class="text-center px-3 py-3 font-semibold text-slate-600">CPC</th>
+              <th class="text-center px-3 py-3 font-semibold text-slate-600">CPM</th>
+              <th class="text-center px-3 py-3 font-semibold text-slate-600">Costo/Lead</th>
+            </tr>
+          </thead>
+          <tbody id="ads-detail-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabla principal -->
   <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
     <div class="px-5 py-3 border-b border-slate-100 text-xs font-semibold text-slate-500 uppercase tracking-wide flex items-center gap-2">
       <i class="fas fa-bullhorn text-blue-500"></i> Meta Ads - Rendimiento de Anuncios
@@ -231,6 +289,8 @@ const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?for
 
 const META_ADS_SHEET_ID = '1DulFJH0a2Ybc74bVgXxqjTedfwzwg9iC8J8gI28ORvo';
 const META_ADS_URL      = `https://docs.google.com/spreadsheets/d/${META_ADS_SHEET_ID}/export?format=csv&gid=1015531289`;
+const CAMPANAS_URL      = `https://docs.google.com/spreadsheets/d/${META_ADS_SHEET_ID}/export?format=csv&gid=1670895855`;
+const DIARIO_URL        = `https://docs.google.com/spreadsheets/d/${META_ADS_SHEET_ID}/export?format=csv&gid=1729087505`;
 
 const AREA_COLORS = {
   'SALTA':            'bg-purple-100 text-purple-800',
@@ -250,6 +310,9 @@ let allVendors = [];
 let photos     = {};    // key → url
 let lastPosts  = {};    // key → { instagram, tiktok, facebook }
 let uploadKey  = null;
+let campanasData = [];
+let diarioData   = [];
+let adsDetailVendor = null;
 
 // ── Helpers ─────────────────────────────────────────────────
 function vendorKey(nombre) {
@@ -706,13 +769,28 @@ window.setTab = function(tab) {
 
 // ── Meta Ads ─────────────────────────────────────────────────
 let adsData = [];
+let campanasData = [];
+let diarioData = [];
+let adsDetailVendor = null;
+let adsDateFilterActive = false;
+
+async function loadCsv(url) {
+  const res = await fetch(url);
+  const csv = await res.text();
+  return Papa.parse(csv, { header: true, skipEmptyLines: true }).data;
+}
 
 async function loadAds() {
   try {
-    const res = await fetch(META_ADS_URL);
-    const csv = await res.text();
-    const parsed = Papa.parse(csv, { header: true, skipEmptyLines: true });
-    adsData = parsed.data.filter(d => d['Vendedor'] && d['Vendedor'].trim());
+    const [resumen, campanas, diario] = await Promise.all([
+      loadCsv(META_ADS_URL),
+      loadCsv(CAMPANAS_URL),
+      loadCsv(DIARIO_URL),
+    ]);
+    adsData = resumen.filter(d => d['Vendedor'] && d['Vendedor'].trim());
+    campanasData = campanas.filter(d => d['Campana'] && d['Campana'].trim());
+    diarioData = diario.filter(d => d['Fecha'] && d['Vendedor'] && d['Vendedor'].trim());
+    setDefaultDateRange();
     renderAdsTable();
   } catch (e) {
     console.error('Error cargando anuncios:', e);
@@ -721,12 +799,67 @@ async function loadAds() {
   }
 }
 
+function setDefaultDateRange() {
+  if (diarioData.length) {
+    const fechas = diarioData.map(d => d['Fecha']).filter(Boolean).sort();
+    if (fechas.length) {
+      document.getElementById('ads-desde').value = fechas[0];
+    }
+  }
+  document.getElementById('ads-hasta').value = new Date().toISOString().slice(0, 10);
+}
+
+window.applyDateFilter = function() {
+  const desde = document.getElementById('ads-desde').value;
+  const hasta = document.getElementById('ads-hasta').value;
+  if (!desde && !hasta) { clearDateFilter(); return; }
+  adsDateFilterActive = !!(desde || hasta);
+
+  if (adsDateFilterActive && diarioData.length) {
+    const filtered = diarioData.filter(d => {
+      if (!d['Fecha']) return false;
+      if (desde && d['Fecha'] < desde) return false;
+      if (hasta && d['Fecha'] > hasta) return false;
+      return true;
+    });
+    const grouped = {};
+    for (const d of filtered) {
+      const key = (d['Vendedor'] || '').trim();
+      if (!key) continue;
+      if (!grouped[key]) grouped[key] = { vendedor: key, sucursal: d['Sucursal'] || '', gasto: 0, impresiones: 0, clics: 0, leads: 0, campanas: 0, count: 0 };
+      grouped[key].gasto += parseFloat(d['Gasto']) || 0;
+      grouped[key].impresiones += parseInt(d['Impresiones']) || 0;
+      grouped[key].clics += parseInt(d['Clics']) || 0;
+      grouped[key].leads += parseInt(d['Leads']) || 0;
+      grouped[key].campanas = Math.max(grouped[key].campanas, parseInt(d['Campanas Activas']) || 0);
+      grouped[key].count++;
+    }
+    renderAdsTableFrom(Object.values(grouped));
+    const info = document.getElementById('ads-range-info');
+    info.textContent = `Mostrando ${Object.keys(grouped).length} vendedores en el rango seleccionado`;
+  } else {
+    renderAdsTable();
+  }
+};
+
+window.clearDateFilter = function() {
+  adsDateFilterActive = false;
+  document.getElementById('ads-desde').value = '';
+  document.getElementById('ads-hasta').value = new Date().toISOString().slice(0, 10);
+  document.getElementById('ads-range-info').textContent = '';
+  renderAdsTable();
+};
+
 function renderAdsTable() {
+  renderAdsTableFrom(adsData);
+}
+
+function renderAdsTableFrom(data) {
   const tbody = document.getElementById('ads-body');
   const loading = document.getElementById('ads-loading');
   if (loading) loading.style.display = 'none';
 
-  if (!adsData.length) {
+  if (!data.length) {
     tbody.innerHTML = '<tr><td colspan="12" class="text-center py-8 text-slate-400">Sin datos de anuncios</td></tr>';
     return;
   }
@@ -734,22 +867,23 @@ function renderAdsTable() {
   const fmt = (n) => n || n === 0 ? Number(n).toLocaleString('es-AR') : '—';
   const money = (n) => n ? '$' + Number(n).toLocaleString('es-AR', { minimumFractionDigits: 2 }) : '—';
 
-  tbody.innerHTML = adsData.map(r => {
-    const name = r['Vendedor'] || '';
-    const area = r['Sucursal'] || '';
-    const camp = r['Campanas Activas'] || '';
+  tbody.innerHTML = data.map(r => {
+    const name = r['Vendedor'] || r['vendedor'] || '';
+    const area = r['Sucursal'] || r['sucursal'] || '';
+    const camp = r['Campanas Activas'] || r['campanas'] || '';
     const hoy  = r['Gasto Hoy'] || '';
-    const mes  = r['Gasto Mes'] || '';
-    const imp  = r['Impresiones'] || '';
-    const clic = r['Clics'] || '';
-    const leads = r['Leads'] || '';
+    const mes  = r['Gasto Mes'] || r['gasto'] || '';
+    const imp  = r['Impresiones'] || r['impresiones'] || '';
+    const clic = r['Clics'] || r['clics'] || '';
+    const leads = r['Leads'] || r['leads'] || '';
     const ctr  = r['CTR'] || '';
     const cpm  = r['CPM'] || '';
     const cpc  = r['CPC'] || '';
     const cpl  = r['Costo/Lead'] || '';
 
-    return `<tr class="border-b border-slate-50 hover:bg-blue-50/40 transition-colors">
-      <td class="px-4 py-2.5 font-medium text-slate-700">${name}</td>
+    const safe = name.replace(/'/g, "\\'");
+    return `<tr class="border-b border-slate-50 hover:bg-blue-50/40 transition-colors cursor-pointer" onclick="showAdsDetail('${safe}')">
+      <td class="px-4 py-2.5 font-medium text-blue-600 hover:text-blue-800">${name}</td>
       <td class="px-4 py-2.5 text-slate-500">${area || '—'}</td>
       <td class="px-3 py-2.5 text-center font-bold text-emerald-600">${camp}</td>
       <td class="px-3 py-2.5 text-center font-mono text-blue-600">${money(hoy)}</td>
@@ -767,6 +901,48 @@ function renderAdsTable() {
   const el = document.getElementById('ads-date');
   if (el) el.textContent = new Date().toLocaleString('es-AR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
 }
+
+window.showAdsDetail = function(vendorName) {
+  adsDetailVendor = vendorName;
+  const camps = campanasData.filter(c => {
+    const v = (c['Vendedor'] || '').trim().toLowerCase();
+    return v === vendorName.trim().toLowerCase();
+  });
+  document.getElementById('ads-detail-vendor').textContent = vendorName;
+  const branch = camps.length ? camps[0]['Sucursal'] : '';
+  document.getElementById('ads-detail-branch').textContent = branch ? `(${branch})` : '';
+  document.getElementById('ads-detail-date').textContent = camps.length ? `Actualizado: ${camps[0]['Fecha'] || ''}` : '';
+
+  const tbody = document.getElementById('ads-detail-body');
+  if (!camps.length) {
+    tbody.innerHTML = '<tr><td colspan="11" class="text-center py-8 text-slate-400">Sin campanas activas</td></tr>';
+  } else {
+    const fmt = (n) => n || n === 0 ? Number(n).toLocaleString('es-AR') : '—';
+    const money = (n) => n ? '$' + Number(n).toLocaleString('es-AR', { minimumFractionDigits: 2 }) : '—';
+    const estadoClass = (s) => s === 'ACTIVE' ? 'text-emerald-600' : 'text-slate-400';
+
+    tbody.innerHTML = camps.map(c => `<tr class="border-b border-slate-50 hover:bg-blue-50/40 transition-colors">
+      <td class="px-4 py-2.5 font-medium text-slate-700">${c['Campana']}</td>
+      <td class="px-3 py-2.5 text-center font-semibold ${estadoClass(c['Estado'])}">${c['Estado'] === 'ACTIVE' ? 'Activa' : c['Estado'] || '—'}</td>
+      <td class="px-3 py-2.5 text-center text-slate-500">${c['Objetivo'] || '—'}</td>
+      <td class="px-3 py-2.5 text-center font-mono text-blue-600">${money(c['Gasto'])}</td>
+      <td class="px-3 py-2.5 text-center font-mono">${fmt(c['Impresiones'])}</td>
+      <td class="px-3 py-2.5 text-center font-mono">${fmt(c['Clics'])}</td>
+      <td class="px-3 py-2.5 text-center font-bold text-amber-600">${fmt(c['Leads'])}</td>
+      <td class="px-3 py-2.5 text-center text-slate-500">${c['CTR'] || '—'}</td>
+      <td class="px-3 py-2.5 text-center text-slate-500">${c['CPC'] || '—'}</td>
+      <td class="px-3 py-2.5 text-center text-slate-500">${c['CPM'] || '—'}</td>
+      <td class="px-3 py-2.5 text-center text-slate-500">${c['Costo/Lead'] || '—'}</td>
+    </tr>`).join('');
+  }
+
+  document.getElementById('ads-detail').classList.remove('hidden');
+};
+
+window.closeAdsDetail = function() {
+  adsDetailVendor = null;
+  document.getElementById('ads-detail').classList.add('hidden');
+};
 
 // ── Init ──────────────────────────────────────────────────────
 async function init() {
