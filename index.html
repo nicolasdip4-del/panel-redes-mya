@@ -371,18 +371,30 @@ function loadVendors() {
   });
 }
 
+function firestoreGet(collection) {
+  return new Promise(resolve => {
+    const timeout = setTimeout(() => resolve([]), 5000);
+    db.collection(collection).get().then(snap => {
+      clearTimeout(timeout);
+      const data = {};
+      snap.forEach(doc => { data[doc.id] = doc.data(); });
+      resolve(data);
+    }).catch(() => { clearTimeout(timeout); resolve({}); });
+  });
+}
+
 async function loadPhotos() {
-  try {
-    const snap = await db.collection('redesPhotos').get();
-    snap.forEach(doc => { photos[doc.id] = doc.data().url; });
-  } catch(e) {}
+  const data = await firestoreGet('redesPhotos');
+  for (const [key, val] of Object.entries(data)) {
+    photos[key] = val.url;
+  }
 }
 
 async function loadLastPosts() {
-  try {
-    const snap = await db.collection('redesLastPosts').get();
-    snap.forEach(doc => { lastPosts[doc.id] = doc.data(); });
-  } catch(e) {}
+  const data = await firestoreGet('redesLastPosts');
+  for (const [key, val] of Object.entries(data)) {
+    lastPosts[key] = val;
+  }
 }
 
 // ── Card ─────────────────────────────────────────────────────
