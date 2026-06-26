@@ -774,29 +774,27 @@ let diarioData = [];
 let adsDetailVendor = null;
 let adsDateFilterActive = false;
 
-async function loadCsv(url) {
-  const res = await fetch(url);
-  const csv = await res.text();
-  return Papa.parse(csv, { header: true, skipEmptyLines: true }).data;
+function parseSheetCsv(url) {
+  return new Promise(resolve => {
+    Papa.parse(url, {
+      download: true, header: true, skipEmptyLines: true,
+      complete: r => resolve(r.data),
+      error: () => resolve([]),
+    });
+  });
 }
 
 async function loadAds() {
-  try {
-    const [resumen, campanas, diario] = await Promise.all([
-      loadCsv(META_ADS_URL),
-      loadCsv(CAMPANAS_URL),
-      loadCsv(DIARIO_URL),
-    ]);
-    adsData = resumen.filter(d => d['Vendedor'] && d['Vendedor'].trim());
-    campanasData = campanas.filter(d => d['Campana'] && d['Campana'].trim());
-    diarioData = diario.filter(d => d['Fecha'] && d['Vendedor'] && d['Vendedor'].trim());
-    setDefaultDateRange();
-    renderAdsTable();
-  } catch (e) {
-    console.error('Error cargando anuncios:', e);
-    const el = document.getElementById('ads-loading');
-    if (el) el.innerHTML = '<p class="text-red-400 text-sm">Error al cargar datos de anuncios</p>';
-  }
+  const [resumen, campanas, diario] = await Promise.all([
+    parseSheetCsv(META_ADS_URL),
+    parseSheetCsv(CAMPANAS_URL),
+    parseSheetCsv(DIARIO_URL),
+  ]);
+  adsData = resumen.filter(d => d['Vendedor'] && d['Vendedor'].trim());
+  campanasData = campanas.filter(d => d['Campana'] && d['Campana'].trim());
+  diarioData = diario.filter(d => d['Fecha'] && d['Vendedor'] && d['Vendedor'].trim());
+  setDefaultDateRange();
+  renderAdsTable();
 }
 
 function setDefaultDateRange() {
