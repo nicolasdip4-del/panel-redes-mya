@@ -52,6 +52,10 @@
       class="tab-btn px-4 py-2 text-sm font-semibold rounded-t-xl border-b-2 border-transparent text-slate-400 hover:text-slate-600 bg-slate-100 hover:bg-white transition-colors">
       <i class="fas fa-chart-bar mr-1.5"></i>Resumen
     </button>
+    <button id="tab-anuncios" onclick="setTab('anuncios')"
+      class="tab-btn px-4 py-2 text-sm font-semibold rounded-t-xl border-b-2 border-transparent text-slate-400 hover:text-slate-600 bg-slate-100 hover:bg-white transition-colors">
+      <i class="fas fa-bullhorn mr-1.5"></i>Anuncios
+    </button>
   </div>
 </div>
 
@@ -130,6 +134,41 @@
   </div>
 </div>
 
+<!-- ── Vista Anuncios ─────────────────────────────────────── -->
+<div id="vista-anuncios" class="hidden max-w-screen-xl mx-auto px-4 pb-10">
+  <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
+    <div class="px-5 py-3 border-b border-slate-100 text-xs font-semibold text-slate-500 uppercase tracking-wide flex items-center gap-2">
+      <i class="fas fa-bullhorn text-blue-500"></i> Meta Ads - Rendimiento de Anuncios
+      <span id="ads-date" class="ml-auto text-slate-400 font-normal normal-case"></span>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="bg-slate-50 border-b border-slate-200">
+            <th class="text-left px-4 py-3 font-semibold text-slate-600">Vendedor</th>
+            <th class="text-left px-4 py-3 font-semibold text-slate-600">Sucursal</th>
+            <th class="text-center px-3 py-3 font-semibold text-emerald-600">Campanas</th>
+            <th class="text-center px-3 py-3 font-semibold text-blue-600">Gasto Hoy</th>
+            <th class="text-center px-3 py-3 font-semibold text-blue-600">Gasto Mes</th>
+            <th class="text-center px-3 py-3 font-semibold text-slate-600">Impresiones</th>
+            <th class="text-center px-3 py-3 font-semibold text-slate-600">Clics</th>
+            <th class="text-center px-3 py-3 font-semibold text-amber-600">Leads</th>
+            <th class="text-center px-3 py-3 font-semibold text-slate-600">CTR</th>
+            <th class="text-center px-3 py-3 font-semibold text-slate-600">CPM</th>
+            <th class="text-center px-3 py-3 font-semibold text-slate-600">CPC</th>
+            <th class="text-center px-3 py-3 font-semibold text-slate-600">Costo/Lead</th>
+          </tr>
+        </thead>
+        <tbody id="ads-body"></tbody>
+      </table>
+    </div>
+    <div id="ads-loading" class="flex flex-col items-center py-12 text-slate-400 gap-3">
+      <i class="fas fa-spinner fa-spin text-3xl text-blue-400"></i>
+      <p class="text-sm">Cargando datos de anuncios...</p>
+    </div>
+  </div>
+</div>
+
 <!-- ── Upload input ─────────────────────────────────────── -->
 <input type="file" id="file-input" accept="image/*" class="hidden">
 
@@ -189,6 +228,9 @@ const CLOUDINARY_PRESET = 'x5gqnsmf';
 // ── Config ──────────────────────────────────────────────────
 const SHEET_ID  = '1VNDYPC2Uw3Yq856In5hpdfR0ZrmuOWnZov4_LwXF79s';
 const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=0`;
+
+const META_ADS_SHEET_ID = '1DulFJH0a2Ybc74bVgXxqjTedfwzwg9iC8J8gI28ORvo';
+const META_ADS_URL      = `https://docs.google.com/spreadsheets/d/${META_ADS_SHEET_ID}/export?format=csv&gid=1015531289`;
 
 const AREA_COLORS = {
   'SALTA':            'bg-purple-100 text-purple-800',
@@ -644,23 +686,91 @@ window.filtrarSucursal = function(area) {
 };
 
 window.setTab = function(tab) {
-  const isVend = tab === 'vendedores';
+  const isVend  = tab === 'vendedores';
+  const isRes   = tab === 'resumen';
+  const isAds   = tab === 'anuncios';
   document.getElementById('vista-vendedores').classList.toggle('hidden', !isVend);
-  document.getElementById('vista-resumen').classList.toggle('hidden', isVend);
+  document.getElementById('vista-resumen').classList.toggle('hidden', !isRes);
+  document.getElementById('vista-anuncios').classList.toggle('hidden', !isAds);
 
   const activeClass   = ['border-blue-500', 'text-blue-600', 'bg-white'];
   const inactiveClass = ['border-transparent', 'text-slate-400', 'bg-slate-100'];
 
-  const tVend = document.getElementById('tab-vendedores');
-  const tRes  = document.getElementById('tab-resumen');
+  const tVend   = document.getElementById('tab-vendedores');
+  const tRes    = document.getElementById('tab-resumen');
+  const tAds    = document.getElementById('tab-anuncios');
 
-  activeClass.forEach(c => { tVend.classList.toggle(c, isVend);  tRes.classList.toggle(c, !isVend); });
-  inactiveClass.forEach(c => { tVend.classList.toggle(c, !isVend); tRes.classList.toggle(c, isVend); });
+  activeClass.forEach(c => { tVend.classList.toggle(c, isVend); tRes.classList.toggle(c, isRes); tAds.classList.toggle(c, isAds); });
+  inactiveClass.forEach(c => { tVend.classList.toggle(c, !isVend); tRes.classList.toggle(c, !isRes); tAds.classList.toggle(c, !isAds); });
 };
+
+// ── Meta Ads ─────────────────────────────────────────────────
+let adsData = [];
+
+async function loadAds() {
+  try {
+    const res = await fetch(META_ADS_URL);
+    const csv = await res.text();
+    const parsed = Papa.parse(csv, { header: true, skipEmptyLines: true });
+    adsData = parsed.data.filter(d => d['Vendedor'] && d['Vendedor'].trim());
+    renderAdsTable();
+  } catch (e) {
+    console.error('Error cargando anuncios:', e);
+    const el = document.getElementById('ads-loading');
+    if (el) el.innerHTML = '<p class="text-red-400 text-sm">Error al cargar datos de anuncios</p>';
+  }
+}
+
+function renderAdsTable() {
+  const tbody = document.getElementById('ads-body');
+  const loading = document.getElementById('ads-loading');
+  if (loading) loading.style.display = 'none';
+
+  if (!adsData.length) {
+    tbody.innerHTML = '<tr><td colspan="12" class="text-center py-8 text-slate-400">Sin datos de anuncios</td></tr>';
+    return;
+  }
+
+  const fmt = (n) => n || n === 0 ? Number(n).toLocaleString('es-AR') : '—';
+  const money = (n) => n ? '$' + Number(n).toLocaleString('es-AR', { minimumFractionDigits: 2 }) : '—';
+
+  tbody.innerHTML = adsData.map(r => {
+    const name = r['Vendedor'] || '';
+    const area = r['Sucursal'] || '';
+    const camp = r['Campanas Activas'] || '';
+    const hoy  = r['Gasto Hoy'] || '';
+    const mes  = r['Gasto Mes'] || '';
+    const imp  = r['Impresiones'] || '';
+    const clic = r['Clics'] || '';
+    const leads = r['Leads'] || '';
+    const ctr  = r['CTR'] || '';
+    const cpm  = r['CPM'] || '';
+    const cpc  = r['CPC'] || '';
+    const cpl  = r['Costo/Lead'] || '';
+
+    return `<tr class="border-b border-slate-50 hover:bg-blue-50/40 transition-colors">
+      <td class="px-4 py-2.5 font-medium text-slate-700">${name}</td>
+      <td class="px-4 py-2.5 text-slate-500">${area || '—'}</td>
+      <td class="px-3 py-2.5 text-center font-bold text-emerald-600">${camp}</td>
+      <td class="px-3 py-2.5 text-center font-mono text-blue-600">${money(hoy)}</td>
+      <td class="px-3 py-2.5 text-center font-mono text-blue-600">${money(mes)}</td>
+      <td class="px-3 py-2.5 text-center font-mono">${fmt(imp)}</td>
+      <td class="px-3 py-2.5 text-center font-mono">${fmt(clic)}</td>
+      <td class="px-3 py-2.5 text-center font-bold text-amber-600">${fmt(leads)}</td>
+      <td class="px-3 py-2.5 text-center text-slate-500">${ctr || '—'}</td>
+      <td class="px-3 py-2.5 text-center text-slate-500">${cpm || '—'}</td>
+      <td class="px-3 py-2.5 text-center text-slate-500">${cpc || '—'}</td>
+      <td class="px-3 py-2.5 text-center text-slate-500">${cpl || '—'}</td>
+    </tr>`;
+  }).join('');
+
+  const el = document.getElementById('ads-date');
+  if (el) el.textContent = new Date().toLocaleString('es-AR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+}
 
 // ── Init ──────────────────────────────────────────────────────
 async function init() {
-  const [vendors] = await Promise.all([loadVendors(), loadPhotos(), loadLastPosts()]);
+  const [vendors] = await Promise.all([loadVendors(), loadPhotos(), loadLastPosts(), loadAds()]);
   allVendors = vendors;
 
   const loading = document.getElementById('loading');
