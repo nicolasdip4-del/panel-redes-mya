@@ -211,6 +211,7 @@
       <table class="w-full text-sm">
         <thead>
           <tr class="bg-slate-50 border-b border-slate-200">
+            <th class="text-center px-2 py-3 font-semibold text-slate-600 w-10"></th>
             <th class="text-left px-4 py-3 font-semibold text-slate-600">Vendedor</th>
             <th class="text-left px-4 py-3 font-semibold text-slate-600">Sucursal</th>
             <th class="text-center px-3 py-3 font-semibold text-emerald-600">Campanas</th>
@@ -888,7 +889,7 @@ function renderAdsTableFrom(data) {
   if (loading) loading.style.display = 'none';
 
   if (!data.length) {
-    tbody.innerHTML = '<tr><td colspan="12" class="text-center py-8 text-slate-400">Sin datos de anuncios</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="16" class="text-center py-8 text-slate-400">Sin datos de anuncios</td></tr>';
     return;
   }
 
@@ -898,6 +899,9 @@ function renderAdsTableFrom(data) {
 
   tbody.innerHTML = data.map(r => {
     const name = r['Vendedor'] || r['vendedor'] || '';
+    const key = vendorKey(name);
+    const photo = photos[key] || null;
+    const initialsStr = initials(name);
     const area = r['Sucursal'] || r['sucursal'] || '';
     const camp = r['Campanas Activas'] || r['campanas'] || '';
     const hoy  = r['Gasto Hoy'] || '';
@@ -915,6 +919,7 @@ function renderAdsTableFrom(data) {
 
     const safe = name.replace(/'/g, "\\'");
     return `<tr class="border-b border-slate-50 hover:bg-blue-50/40 transition-colors cursor-pointer" onclick="showAdsDetail('${safe}')">
+      <td class="px-2 py-2.5 text-center">${photo ? `<img src="${photo}" class="w-8 h-8 rounded-full object-cover mx-auto">` : `<span class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-purple-400 text-white text-[10px] font-bold flex items-center justify-center mx-auto">${initialsStr}</span>`}</td>
       <td class="px-4 py-2.5 font-medium text-blue-600 hover:text-blue-800">${name}</td>
       <td class="px-4 py-2.5 text-slate-500">${area || '—'}</td>
       <td class="px-3 py-2.5 text-center font-bold text-emerald-600">${camp}</td>
