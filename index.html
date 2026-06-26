@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>Panel de Redes Sociales - Fuerzas de Ventas</title>
-  <meta name="rev" content="2026-06-26-v3">
+  <meta name="rev" content="2026-06-26-v4">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -926,11 +926,13 @@ window.applyDateFilter = function() {
     for (const d of filtered) {
       const key = (d['Vendedor'] || '').trim();
       if (!key) continue;
-      if (!grouped[key]) grouped[key] = { vendedor: key, sucursal: d['Sucursal'] || '', gasto: 0, impresiones: 0, clics: 0, leads: 0, campanas: 0, count: 0 };
+      if (!grouped[key]) grouped[key] = { vendedor: key, sucursal: d['Sucursal'] || '', gasto: 0, impresiones: 0, clics: 0, leads: 0, alcance: 0, conversaciones: 0, campanas: 0, count: 0 };
       grouped[key].gasto += parseFloat(d['Gasto']) || 0;
       grouped[key].impresiones += parseInt(d['Impresiones']) || 0;
       grouped[key].clics += parseInt(d['Clics']) || 0;
       grouped[key].leads += parseInt(d['Leads']) || 0;
+      grouped[key].alcance += parseInt(d['Alcance']) || 0;
+      grouped[key].conversaciones += parseInt(d['Conversaciones']) || 0;
       grouped[key].campanas = Math.max(grouped[key].campanas, parseInt(d['Campanas Activas']) || 0);
       grouped[key].count++;
     }
