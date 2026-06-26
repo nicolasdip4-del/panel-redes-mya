@@ -363,10 +363,12 @@ function showToast(msg, error = false) {
 // ── Load data ────────────────────────────────────────────────
 function loadVendors() {
   return new Promise(resolve => {
+    const done = (d) => { clearTimeout(t); resolve(d); };
+    const t = setTimeout(() => { console.warn('Timeout loadVendors'); resolve([]); }, 8000);
     Papa.parse(SHEET_URL, {
       download: true, header: true, skipEmptyLines: true,
-      complete: r => resolve(r.data),
-      error: () => resolve([]),
+      complete: r => done(r.data),
+      error: () => done([]),
     });
   });
 }
@@ -788,10 +790,12 @@ let adsDateFilterActive = false;
 
 function parseSheetCsv(url) {
   return new Promise(resolve => {
+    const done = (d) => { clearTimeout(t); resolve(d); };
+    const t = setTimeout(() => { console.warn('Timeout parseSheetCsv:', url.slice(-30)); done([]); }, 8000);
     Papa.parse(url, {
       download: true, header: true, skipEmptyLines: true,
-      complete: r => resolve(r.data),
-      error: () => resolve([]),
+      complete: r => done(r.data),
+      error: () => done([]),
     });
   });
 }
@@ -956,8 +960,15 @@ window.closeAdsDetail = function() {
 
 // ── Init ──────────────────────────────────────────────────────
 async function init() {
-  const [vendors] = await Promise.all([loadVendors(), loadPhotos(), loadLastPosts(), loadAds()]);
-  allVendors = vendors;
+  try {
+    console.log('init: loading vendors...');
+    allVendors = await loadVendors();
+    console.log('init: vendors done, loading photos, posts, ads...');
+    await Promise.all([loadPhotos(), loadLastPosts(), loadAds()]);
+    console.log('init: all done, rendering...');
+  } catch (e) {
+    console.error('init error:', e);
+  }
 
   const loading = document.getElementById('loading');
   if (loading) loading.remove();
@@ -974,6 +985,14 @@ async function init() {
   document.getElementById('filter-fuerza').addEventListener('change', renderAll);
   document.getElementById('filter-red').addEventListener('change', renderAll);
 }
+
+// Fallback: si init no completa en 12 seg, mostrar el panel igual
+setTimeout(() => {
+  const loading = document.getElementById('loading');
+  if (loading) {
+    loading.innerHTML = '<p class="text-red-400 text-sm">Error al cargar datos. <button onclick="location.reload()" class="underline">Recargar</button></p>';
+  }
+}, 12000);
 
 init();
 </script>
