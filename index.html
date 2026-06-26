@@ -7,6 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>Panel de Redes Sociales - Fuerzas de Ventas</title>
+  <meta name="rev" content="2026-06-26-v2">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -180,14 +181,18 @@
               <th class="text-left px-4 py-3 font-semibold text-slate-600">Campana</th>
               <th class="text-center px-3 py-3 font-semibold text-slate-600">Estado</th>
               <th class="text-center px-3 py-3 font-semibold text-slate-600">Objetivo</th>
+              <th class="text-center px-3 py-3 font-semibold text-emerald-600">Antiguedad</th>
               <th class="text-center px-3 py-3 font-semibold text-blue-600">Gasto</th>
               <th class="text-center px-3 py-3 font-semibold text-slate-600">Impresiones</th>
+              <th class="text-center px-3 py-3 font-semibold text-slate-600">Alcance</th>
               <th class="text-center px-3 py-3 font-semibold text-slate-600">Clics</th>
               <th class="text-center px-3 py-3 font-semibold text-amber-600">Leads</th>
+              <th class="text-center px-3 py-3 font-semibold text-indigo-600">Conversaciones</th>
               <th class="text-center px-3 py-3 font-semibold text-slate-600">CTR</th>
               <th class="text-center px-3 py-3 font-semibold text-slate-600">CPC</th>
               <th class="text-center px-3 py-3 font-semibold text-slate-600">CPM</th>
               <th class="text-center px-3 py-3 font-semibold text-slate-600">Costo/Lead</th>
+              <th class="text-center px-3 py-3 font-semibold text-rose-600">Costo/Resultado</th>
             </tr>
           </thead>
           <tbody id="ads-detail-body"></tbody>
@@ -212,12 +217,15 @@
             <th class="text-center px-3 py-3 font-semibold text-blue-600">Gasto Hoy</th>
             <th class="text-center px-3 py-3 font-semibold text-blue-600">Gasto Mes</th>
             <th class="text-center px-3 py-3 font-semibold text-slate-600">Impresiones</th>
+            <th class="text-center px-3 py-3 font-semibold text-slate-600">Alcance</th>
             <th class="text-center px-3 py-3 font-semibold text-slate-600">Clics</th>
             <th class="text-center px-3 py-3 font-semibold text-amber-600">Leads</th>
+            <th class="text-center px-3 py-3 font-semibold text-indigo-600">Conversaciones</th>
             <th class="text-center px-3 py-3 font-semibold text-slate-600">CTR</th>
             <th class="text-center px-3 py-3 font-semibold text-slate-600">CPM</th>
             <th class="text-center px-3 py-3 font-semibold text-slate-600">CPC</th>
             <th class="text-center px-3 py-3 font-semibold text-slate-600">Costo/Lead</th>
+            <th class="text-center px-3 py-3 font-semibold text-rose-600">Costo/Resultado</th>
           </tr>
         </thead>
         <tbody id="ads-body"></tbody>
@@ -892,10 +900,13 @@ function renderAdsTableFrom(data) {
     const imp  = r['Impresiones'] || r['impresiones'] || '';
     const clic = r['Clics'] || r['clics'] || '';
     const leads = r['Leads'] || r['leads'] || '';
+    const alcance = r['Alcance'] || r['alcance'] || '';
+    const conv = r['Conversaciones'] || r['conversaciones'] || '';
     const ctr  = r['CTR'] || '';
     const cpm  = r['CPM'] || '';
     const cpc  = r['CPC'] || '';
     const cpl  = r['Costo/Lead'] || '';
+    const cpres = r['Costo/Resultado'] || r['cost_per_result'] || '';
 
     const safe = name.replace(/'/g, "\\'");
     return `<tr class="border-b border-slate-50 hover:bg-blue-50/40 transition-colors cursor-pointer" onclick="showAdsDetail('${safe}')">
@@ -905,12 +916,15 @@ function renderAdsTableFrom(data) {
       <td class="px-3 py-2.5 text-center font-mono text-blue-600">${money(hoy)}</td>
       <td class="px-3 py-2.5 text-center font-mono text-blue-600">${money(mes)}</td>
       <td class="px-3 py-2.5 text-center font-mono">${fmt(imp)}</td>
+      <td class="px-3 py-2.5 text-center font-mono">${fmt(alcance)}</td>
       <td class="px-3 py-2.5 text-center font-mono">${fmt(clic)}</td>
       <td class="px-3 py-2.5 text-center font-bold text-amber-600">${fmt(leads)}</td>
+      <td class="px-3 py-2.5 text-center font-bold text-indigo-600">${fmt(conv)}</td>
       <td class="px-3 py-2.5 text-center text-slate-500">${ctr || '—'}</td>
       <td class="px-3 py-2.5 text-center text-slate-500">${cpm || '—'}</td>
       <td class="px-3 py-2.5 text-center text-slate-500">${cpc || '—'}</td>
       <td class="px-3 py-2.5 text-center text-slate-500">${cpl || '—'}</td>
+      <td class="px-3 py-2.5 text-center font-semibold text-rose-600">${cpres || '—'}</td>
     </tr>`;
   }).join('');
 
@@ -931,24 +945,37 @@ window.showAdsDetail = function(vendorName) {
 
   const tbody = document.getElementById('ads-detail-body');
   if (!camps.length) {
-    tbody.innerHTML = '<tr><td colspan="11" class="text-center py-8 text-slate-400">Sin campanas activas</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="15" class="text-center py-8 text-slate-400">Sin campanas activas</td></tr>';
   } else {
     const fmt = (n) => n || n === 0 ? Number(n).toLocaleString('es-AR') : '—';
     const money = (n) => n ? '$' + Number(n).toLocaleString('es-AR', { minimumFractionDigits: 2 }) : '—';
     const estadoClass = (s) => s === 'ACTIVE' ? 'text-emerald-600' : 'text-slate-400';
+    const antiguedadText = (d) => {
+      if (!d && d !== 0) return '—';
+      const n = Number(d);
+      if (n === 0) return 'Hoy';
+      if (n === 1) return '1 día';
+      if (n < 30) return `${n} días`;
+      if (n < 365) return `${Math.floor(n / 30)} meses`;
+      return `${Math.floor(n / 365)} años`;
+    };
 
     tbody.innerHTML = camps.map(c => `<tr class="border-b border-slate-50 hover:bg-blue-50/40 transition-colors">
       <td class="px-4 py-2.5 font-medium text-slate-700">${c['Campana']}</td>
       <td class="px-3 py-2.5 text-center font-semibold ${estadoClass(c['Estado'])}">${c['Estado'] === 'ACTIVE' ? 'Activa' : c['Estado'] || '—'}</td>
       <td class="px-3 py-2.5 text-center text-slate-500">${c['Objetivo'] || '—'}</td>
+      <td class="px-3 py-2.5 text-center text-emerald-600">${antiguedadText(c['Antiguedad'])}</td>
       <td class="px-3 py-2.5 text-center font-mono text-blue-600">${money(c['Gasto'])}</td>
       <td class="px-3 py-2.5 text-center font-mono">${fmt(c['Impresiones'])}</td>
+      <td class="px-3 py-2.5 text-center font-mono">${fmt(c['Alcance'])}</td>
       <td class="px-3 py-2.5 text-center font-mono">${fmt(c['Clics'])}</td>
       <td class="px-3 py-2.5 text-center font-bold text-amber-600">${fmt(c['Leads'])}</td>
+      <td class="px-3 py-2.5 text-center font-bold text-indigo-600">${fmt(c['Conversaciones'])}</td>
       <td class="px-3 py-2.5 text-center text-slate-500">${c['CTR'] || '—'}</td>
       <td class="px-3 py-2.5 text-center text-slate-500">${c['CPC'] || '—'}</td>
       <td class="px-3 py-2.5 text-center text-slate-500">${c['CPM'] || '—'}</td>
       <td class="px-3 py-2.5 text-center text-slate-500">${c['Costo/Lead'] || '—'}</td>
+      <td class="px-3 py-2.5 text-center font-semibold text-rose-600">${c['Costo/Resultado'] || '—'}</td>
     </tr>`).join('');
   }
 
