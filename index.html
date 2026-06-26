@@ -800,15 +800,17 @@ function parseSheetCsv(url) {
   });
 }
 
+const INTERNAL_VENDORS = ['MyA Equipamientos Comerciales'];
+
 async function loadAds() {
   const [resumen, campanas, diario] = await Promise.all([
     parseSheetCsv(META_ADS_URL),
     parseSheetCsv(CAMPANAS_URL),
     parseSheetCsv(DIARIO_URL),
   ]);
-  adsData = resumen.filter(d => d['Vendedor'] && d['Vendedor'].trim());
+  adsData = resumen.filter(d => d['Vendedor'] && d['Vendedor'].trim() && !INTERNAL_VENDORS.includes(d['Vendedor'].trim()));
   campanasData = campanas.filter(d => d['Campana'] && d['Campana'].trim());
-  diarioData = diario.filter(d => d['Fecha'] && d['Vendedor'] && d['Vendedor'].trim());
+  diarioData = diario.filter(d => d['Fecha'] && d['Vendedor'] && d['Vendedor'].trim() && !INTERNAL_VENDORS.includes(d['Vendedor'].trim()));
   setDefaultDateRange();
   renderAdsTable();
 }
