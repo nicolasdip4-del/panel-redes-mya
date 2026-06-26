@@ -808,7 +808,11 @@ function parseSheetCsv(url) {
   });
 }
 
-const INTERNAL_VENDORS = ['MyA Equipamientos Comerciales'];
+const INTERNAL_VENDORS = [
+  'MyA Equipamientos Comerciales',
+  'SD - M&A Equipamientos Comerciales  - Self',
+  'SD/Tonal  - M&A Equipamientos Comerciales - Self',
+];
 
 async function loadAds() {
   const [resumen, campanas, diario] = await Promise.all([
