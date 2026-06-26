@@ -961,13 +961,20 @@ window.closeAdsDetail = function() {
 // ── Init ──────────────────────────────────────────────────────
 async function init() {
   try {
-    console.log('init: loading vendors...');
+    console.log('init paso 1');
     allVendors = await loadVendors();
-    console.log('init: vendors done, loading photos, posts, ads...');
-    await Promise.all([loadPhotos(), loadLastPosts(), loadAds()]);
-    console.log('init: all done, rendering...');
+    console.log('init paso 2');
+    await loadPhotos();
+    console.log('init paso 3');
+    await loadLastPosts();
+    console.log('init paso 4');
+    await loadAds();
+    console.log('init paso 5');
   } catch (e) {
-    console.error('init error:', e);
+    const err = document.getElementById('error-screen');
+    if (err) err.textContent = 'Error: ' + (e?.message || e);
+    console.error('init:', e);
+    return;
   }
 
   const loading = document.getElementById('loading');
@@ -986,13 +993,23 @@ async function init() {
   document.getElementById('filter-red').addEventListener('change', renderAll);
 }
 
-// Fallback: si init no completa en 12 seg, mostrar el panel igual
+// Global: atrapar cualquier error no manejado
+window.addEventListener('error', e => {
+  const loading = document.getElementById('loading');
+  if (loading) loading.innerHTML = '<p class="text-red-400 text-sm">JS Error: ' + (e.message || e) + '</p>';
+});
+window.addEventListener('unhandledrejection', e => {
+  const loading = document.getElementById('loading');
+  if (loading) loading.innerHTML = '<p class="text-red-400 text-sm">Promise Error: ' + (e.reason?.message || e.reason) + '</p>';
+});
+
+// Fallback: si init no completa en 15 seg, mostrar un error visible
 setTimeout(() => {
   const loading = document.getElementById('loading');
   if (loading) {
-    loading.innerHTML = '<p class="text-red-400 text-sm">Error al cargar datos. <button onclick="location.reload()" class="underline">Recargar</button></p>';
+    loading.innerHTML = '<p class="text-red-400 text-sm">Tiempo de espera agotado. <button onclick="location.reload()" class="underline">Recargar</button></p>';
   }
-}, 12000);
+}, 15000);
 
 init();
 </script>
