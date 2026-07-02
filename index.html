@@ -1091,17 +1091,8 @@ async function init() {
   try {
     console.log('init paso 1');
     allVendors = (await loadVendors()).filter(v => !isBaja(v['Nombre completo'])).concat(EXTRA_VENDORS);
-    // DEBUG: mostrar columnas y valores
-    const debugEl = document.getElementById('loading');
-    if (allVendors.length && debugEl) {
-      const cols = Object.keys(allVendors[0]);
-      const fuerzas = [...new Set(allVendors.map(v => JSON.stringify(v['Fuerza de Venta'])))];
-      debugEl.innerHTML = `<p style="color:white;background:#333;padding:10px;border-radius:8px;font-size:12px">
-        Columnas: ${cols.join(', ')}<br>
-        Fuerza de Venta values: ${fuerzas.join(', ')}
-      </p>`;
-      await new Promise(r => setTimeout(r, 3000));
-    }
+    console.log('Vendors loaded:', allVendors.length);
+
     // aplicar override de fuerza de venta
     allVendors.forEach(v => {
       const nombre = (v['Nombre completo'] || '').trim().toUpperCase();
@@ -1109,11 +1100,14 @@ async function init() {
         v['Fuerza de Venta'] = OVERRIDE_FORCE[nombre];
       }
     });
+
+    // mostrar todas las fuerzas para debug (visible por 5s)
+    const allForces = [...new Set(allVendors.map(v => (v['Fuerza de Venta'] || '').trim()))];
+    console.log('Fuerzas disponibles:', allForces);
+
     // filtrar solo Redes Sociales
-    allVendors = allVendors.filter(v => {
-      const f = (v['Fuerza de Venta'] || '').trim();
-      return f.includes('Redes') || f.includes('redes');
-    });
+    allVendors = allVendors.filter(v => (v['Fuerza de Venta'] || '').trim() === 'Redes Sociales');
+    console.log('Vendors after RS filter:', allVendors.length);
     console.log('init paso 2');
     await loadPhotos();
     console.log('init paso 3');
