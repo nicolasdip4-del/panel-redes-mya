@@ -262,6 +262,14 @@
 <!-- ── Vista Lista Completa ──────────────────────────────── -->
 <div id="vista-lista" class="hidden max-w-screen-xl mx-auto px-4 pb-10 flex flex-col gap-6">
   <!-- KPIs -->
+  <div class="flex flex-wrap items-center gap-3">
+    <select id="lista-filter-fuerza"
+      class="py-2 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white">
+      <option value="">Todas las fuerzas</option>
+    </select>
+  </div>
+
+  <!-- KPIs -->
   <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
     <div class="bg-white rounded-2xl shadow-sm px-5 py-4 flex items-center gap-4">
       <div class="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center"><i class="fas fa-users text-lg"></i></div>
@@ -654,6 +662,21 @@ function buildFuerzaFilter() {
   });
 }
 
+function buildListaFuerzaFilter() {
+  const fuerzas = [...new Set(allVendors.map(v => (v['Fuerza de Venta'] || '').trim()).filter(Boolean))].sort();
+  const sel = document.getElementById('lista-filter-fuerza');
+  const count = {};
+  allVendors.forEach(v => {
+    const f = (v['Fuerza de Venta'] || '').trim();
+    if (f) count[f] = (count[f] || 0) + 1;
+  });
+  fuerzas.forEach(f => {
+    const o = document.createElement('option');
+    o.value = f; o.textContent = `${f} (${count[f] || 0})`;
+    sel.appendChild(o);
+  });
+}
+
 function renderStats() {
   const n     = allVendors.length;
   const ig    = allVendors.filter(v => v['Instagram']).length;
@@ -670,9 +693,16 @@ function renderStats() {
 // ── Lista completa ────────────────────────────────────────────
 let chartInstance = null;
 
+function getFilteredVendors() {
+  const fuerza = document.getElementById('lista-filter-fuerza').value;
+  if (!fuerza) return allVendors;
+  return allVendors.filter(v => (v['Fuerza de Venta'] || '').trim() === fuerza);
+}
+
 function renderListaCompleta() {
+  const filtered = getFilteredVendors();
   const tbody = document.getElementById('lista-body');
-  const sorted = [...allVendors].sort((a, b) => {
+  const sorted = [...filtered].sort((a, b) => {
     const areaCmp = (a['Area'] || '').localeCompare(b['Area'] || '');
     if (areaCmp !== 0) return areaCmp;
     return (a['Nombre completo'] || '').localeCompare(b['Nombre completo'] || '');
@@ -697,21 +727,21 @@ function renderListaCompleta() {
   document.getElementById('lista-count').textContent = `${sorted.length} vendedores`;
 
   // KPIs
-  const areas = [...new Set(allVendors.map(v => (v['Area'] || '').trim()).filter(Boolean))];
-  const conIg = allVendors.filter(v => v['Instagram']).length;
-  const conWa = allVendors.filter(v => v['Número de Whastapp Corporativo']).length;
-  document.getElementById('kpi-total').textContent = allVendors.length;
+  const areas = [...new Set(filtered.map(v => (v['Area'] || '').trim()).filter(Boolean))];
+  const conIg = filtered.filter(v => v['Instagram']).length;
+  const conWa = filtered.filter(v => v['Número de Whastapp Corporativo']).length;
+  document.getElementById('kpi-total').textContent = filtered.length;
   document.getElementById('kpi-sucursales').textContent = areas.length;
   document.getElementById('kpi-ig').textContent = conIg;
   document.getElementById('kpi-wa').textContent = conWa;
-
 }
 
 function renderListaChart() {
+  const filtered = getFilteredVendors();
   const ctx = document.getElementById('chart-sucursal');
   if (!ctx) return;
   const counts = {};
-  for (const v of allVendors) {
+  for (const v of filtered) {
     const a = (v['Area'] || '').trim();
     if (a) counts[a] = (counts[a] || 0) + 1;
   }
@@ -1251,6 +1281,7 @@ async function init() {
 
   buildAreaFilter();
   buildFuerzaFilter();
+  buildListaFuerzaFilter();
   renderStats();
   renderResumen();
   renderResumenFuerza();
@@ -1261,6 +1292,10 @@ async function init() {
   document.getElementById('filter-area').addEventListener('change', renderAll);
   document.getElementById('filter-fuerza').addEventListener('change', renderAll);
   document.getElementById('filter-red').addEventListener('change', renderAll);
+  document.getElementById('lista-filter-fuerza').addEventListener('change', () => {
+    renderListaCompleta();
+    renderListaChart();
+  });
 }
 
 // Global: atrapar cualquier error no manejado
