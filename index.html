@@ -1062,12 +1062,15 @@ const BAJA_VENDORS = [
   'OLMOS MATIAS EXEQUIEL',
   'VIDELA GAMBOA CARLA BELEN',
   'GUTIERREZ JONATHAN PEDRO',
-  'VILLAFAÑE JOSE LUIS ANGEL',
 ];
 
 const EXTRA_VENDORS = [
   { 'Area': 'JUJUY', 'Nombre completo': 'VILTE JOEL', 'Instagram': '', 'TikTok': '', 'Fan Page': '', 'Número de Whastapp Corporativo': '', 'Fuerza de Venta': 'Redes Sociales' },
 ];
+
+const OVERRIDE_FORCE = {
+  'VILLAFAÑE JOSE LUIS ANGEL': 'Showroom',
+};
 
 function isBaja(nombre) {
   return BAJA_VENDORS.includes((nombre || '').trim().toUpperCase());
@@ -1263,6 +1266,13 @@ async function init() {
   try {
     console.log('init paso 1');
     allVendors = (await loadVendors()).filter(v => !isBaja(v['Nombre completo'])).concat(EXTRA_VENDORS);
+    // aplicar override de fuerza de venta
+    allVendors.forEach(v => {
+      const nombre = (v['Nombre completo'] || '').trim().toUpperCase();
+      if (OVERRIDE_FORCE[nombre]) {
+        v['Fuerza de Venta'] = OVERRIDE_FORCE[nombre];
+      }
+    });
     console.log('init paso 2');
     await loadPhotos();
     console.log('init paso 3');
