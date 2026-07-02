@@ -29,8 +29,6 @@
 </head>
 <body class="bg-slate-100 min-h-screen font-sans">
 
-<div id="error-screen" class="hidden fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-red-600 text-white px-5 py-3 rounded-xl shadow-xl text-sm max-w-lg"></div>
-
 <!-- ── Header ──────────────────────────────────────────── -->
 <header class="bg-gradient-to-r from-slate-900 to-blue-900 text-white shadow-xl">
   <div class="max-w-screen-xl mx-auto px-5 py-4 flex items-center justify-between gap-4 flex-wrap">
@@ -1102,16 +1100,6 @@ async function init() {
       }
     });
 
-    // filtrar solo Redes Sociales
-    allVendors = allVendors.filter(v => {
-      const f = (v['Fuerza de Venta'] || '').trim();
-      return f === 'Redes Sociales';
-    });
-    // si quedaron vacios, mostrar error visible
-    if (!allVendors.length) {
-      const err = document.getElementById('error-screen');
-      if (err) { err.textContent = 'No se encontraron vendedores con Fuerza de Venta = "Redes Sociales"'; err.classList.remove('hidden'); }
-    }
     console.log('init paso 2');
     await loadPhotos();
     console.log('init paso 3');
@@ -1120,8 +1108,6 @@ async function init() {
     await loadAds();
     console.log('init paso 5');
   } catch (e) {
-    const err = document.getElementById('error-screen');
-    if (err) { err.textContent = 'Error: ' + (e?.message || e); err.classList.remove('hidden'); }
     console.error('init:', e);
     return;
   }
