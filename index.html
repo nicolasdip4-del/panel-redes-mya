@@ -1091,6 +1091,17 @@ async function init() {
   try {
     console.log('init paso 1');
     allVendors = (await loadVendors()).filter(v => !isBaja(v['Nombre completo'])).concat(EXTRA_VENDORS);
+    // DEBUG: mostrar columnas y valores
+    const debugEl = document.getElementById('loading');
+    if (allVendors.length && debugEl) {
+      const cols = Object.keys(allVendors[0]);
+      const fuerzas = [...new Set(allVendors.map(v => JSON.stringify(v['Fuerza de Venta'])))];
+      debugEl.innerHTML = `<p style="color:white;background:#333;padding:10px;border-radius:8px;font-size:12px">
+        Columnas: ${cols.join(', ')}<br>
+        Fuerza de Venta values: ${fuerzas.join(', ')}
+      </p>`;
+      await new Promise(r => setTimeout(r, 3000));
+    }
     // aplicar override de fuerza de venta
     allVendors.forEach(v => {
       const nombre = (v['Nombre completo'] || '').trim().toUpperCase();
