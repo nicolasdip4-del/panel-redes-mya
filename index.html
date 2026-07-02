@@ -82,10 +82,6 @@
       class="py-2 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white">
       <option value="">Todas las sucursales</option>
     </select>
-    <select id="filter-fuerza"
-      class="py-2 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white">
-      <option value="">Todas las fuerzas</option>
-    </select>
     <select id="filter-red"
       class="py-2 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white">
       <option value="">Todas las redes</option>
@@ -130,30 +126,9 @@
           <tbody id="resumen-body"></tbody>
         </table>
       </div>
-    </div>
-    <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
-      <div class="px-5 py-3 border-b border-slate-100 text-xs font-semibold text-slate-500 uppercase tracking-wide">Por Fuerza de Venta</div>
-      <div class="overflow-x-auto">
-        <table class="w-full text-sm">
-          <thead>
-            <tr class="bg-slate-50 border-b border-slate-200">
-              <th class="text-left px-3 py-3 font-semibold text-slate-600">Fuerza de Venta</th>
-              <th class="text-center px-2 py-3 font-semibold text-slate-600">Total</th>
-              <th class="text-center px-2 py-3 font-semibold text-pink-500"><i class="fab fa-instagram"></i> IG</th>
-              <th class="text-center px-2 py-3 font-semibold text-slate-700"><i class="fab fa-tiktok"></i> TT</th>
-              <th class="text-center px-2 py-3 font-semibold text-blue-500"><i class="fab fa-facebook"></i> FB</th>
-              <th class="text-center px-2 py-3 font-semibold text-red-400">Sin</th>
-              <th class="text-center px-2 py-3 font-semibold text-blue-600">Gasto Mes</th>
-              <th class="text-center px-2 py-3 font-semibold text-slate-600">Impresiones</th>
-              <th class="text-center px-2 py-3 font-semibold text-amber-600">Leads</th>
-              <th class="text-center px-2 py-3 font-semibold text-indigo-600">Conversaciones</th>
-            </tr>
-          </thead>
-          <tbody id="resumen-fuerza-body"></tbody>
-        </table>
-      </div>
-  </div>
 </div>
+
+<!-- ── Vista Anuncios ─────────────────────────────────────── -->
 
 <!-- ── Vista Anuncios ─────────────────────────────────────── -->
 <div id="vista-anuncios" class="hidden max-w-screen-xl mx-auto px-4 pb-10">
@@ -261,14 +236,6 @@
 
 <!-- ── Vista Lista Completa ──────────────────────────────── -->
 <div id="vista-lista" class="hidden max-w-screen-xl mx-auto px-4 pb-10 flex flex-col gap-6">
-  <!-- KPIs -->
-  <div class="flex flex-wrap items-center gap-3">
-    <select id="lista-filter-fuerza"
-      class="py-2 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white">
-      <option value="">Todas las fuerzas</option>
-    </select>
-  </div>
-
   <!-- KPIs -->
   <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
     <div class="bg-white rounded-2xl shadow-sm px-5 py-4 flex items-center gap-4">
@@ -549,7 +516,6 @@ function renderCard(v) {
   const tt     = (v['TikTok'] || '').trim();
   const fb     = (v['Fan Page'] || '').trim();
   const wa     = (v['Número de Whastapp Corporativo'] || '').trim();
-  const fuerza = (v['Fuerza de Venta'] || '').trim();
   const badge  = AREA_COLORS[area] || 'bg-slate-100 text-slate-600';
 
   const displayName = nombre.split(/\s+/).slice(0, 3).join(' ');
@@ -579,8 +545,7 @@ function renderCard(v) {
       <!-- Name & Area -->
       <div class="text-center leading-tight">
         <p class="text-xs font-semibold text-slate-700">${displayName}</p>
-        <span class="inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${badge}">${area}</span>
-        ${fuerza ? `<span class="inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-violet-100 text-violet-700">${fuerza}</span>` : ''}
+          <span class="inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${badge}">${area}</span>
       </div>
 
       <!-- Social -->
@@ -605,19 +570,15 @@ function renderAll() {
   const area   = document.getElementById('filter-area').value;
   const red    = document.getElementById('filter-red').value;
 
-  const fuerza = document.getElementById('filter-fuerza').value;
-
   const filtered = allVendors.filter(v => {
     const nombre  = (v['Nombre completo'] || '').toLowerCase();
     const vArea   = (v['Area'] || '').trim();
-    const vFuerza = (v['Fuerza de Venta'] || '').trim();
     const ig      = !!(v['Instagram'] || '').trim();
     const tt      = !!(v['TikTok'] || '').trim();
     const fb      = !!(v['Fan Page'] || '').trim();
 
     if (search && !nombre.includes(search) && !vArea.toLowerCase().includes(search)) return false;
     if (area && vArea !== area) return false;
-    if (fuerza && vFuerza !== fuerza) return false;
     if (red === 'instagram'  && !ig) return false;
     if (red === 'tiktok'     && !tt) return false;
     if (red === 'facebook'   && !fb) return false;
@@ -633,51 +594,6 @@ function renderAll() {
 }
 
 function buildAreaFilter() {
-  const areas = [...new Set(allVendors.map(v => (v['Area'] || '').trim()).filter(Boolean))].sort();
-  const sel = document.getElementById('filter-area');
-  const countByArea = {};
-  allVendors.forEach(v => {
-    const a = (v['Area'] || '').trim();
-    if (a) countByArea[a] = (countByArea[a] || 0) + 1;
-  });
-  areas.forEach(a => {
-    const o = document.createElement('option');
-    o.value = a; o.textContent = `${a} (${countByArea[a] || 0})`;
-    sel.appendChild(o);
-  });
-}
-
-function buildFuerzaFilter() {
-  const fuerzas = [...new Set(allVendors.map(v => (v['Fuerza de Venta'] || '').trim()).filter(Boolean))].sort();
-  const sel = document.getElementById('filter-fuerza');
-  const count = {};
-  allVendors.forEach(v => {
-    const f = (v['Fuerza de Venta'] || '').trim();
-    if (f) count[f] = (count[f] || 0) + 1;
-  });
-  fuerzas.forEach(f => {
-    const o = document.createElement('option');
-    o.value = f; o.textContent = `${f} (${count[f] || 0})`;
-    sel.appendChild(o);
-  });
-}
-
-function buildListaFuerzaFilter() {
-  const fuerzas = [...new Set(allVendors.map(v => (v['Fuerza de Venta'] || '').trim()).filter(Boolean))].sort();
-  const sel = document.getElementById('lista-filter-fuerza');
-  const count = {};
-  allVendors.forEach(v => {
-    const f = (v['Fuerza de Venta'] || '').trim();
-    if (f) count[f] = (count[f] || 0) + 1;
-  });
-  fuerzas.forEach(f => {
-    const o = document.createElement('option');
-    o.value = f; o.textContent = `${f} (${count[f] || 0})`;
-    sel.appendChild(o);
-  });
-}
-
-function renderStats() {
   const n     = allVendors.length;
   const ig    = allVendors.filter(v => v['Instagram']).length;
   const tt    = allVendors.filter(v => v['TikTok']).length;
@@ -694,9 +610,7 @@ function renderStats() {
 let chartInstance = null;
 
 function getFilteredVendors() {
-  const fuerza = document.getElementById('lista-filter-fuerza').value;
-  if (!fuerza) return allVendors;
-  return allVendors.filter(v => (v['Fuerza de Venta'] || '').trim() === fuerza);
+  return allVendors;
 }
 
 function renderListaCompleta() {
@@ -914,95 +828,6 @@ function renderResumen() {
 
   tbody.innerHTML = rows.join('');
 }
-
-function renderResumenFuerza() {
-  const fuerzas = [...new Set(allVendors.map(v => (v['Fuerza de Venta'] || '').trim()).filter(Boolean))].sort();
-  const tbody = document.getElementById('resumen-fuerza-body');
-
-  // Mapa vendor -> fuerza de venta
-  const vendorFuerza = {};
-  for (const v of allVendors) {
-    const name = (v['Vendedor'] || v['vendedor'] || '').trim().toLowerCase();
-    if (name) vendorFuerza[name] = (v['Fuerza de Venta'] || '').trim();
-  }
-
-  // Agrupar ads por fuerza
-  const adsByFuerza = {};
-  for (const a of adsData) {
-    const vname = (a['Vendedor'] || a['vendedor'] || '').trim().toLowerCase();
-    const fuerza = vendorFuerza[vname] || 'Sin fuerza';
-    if (!adsByFuerza[fuerza]) adsByFuerza[fuerza] = { gasto: 0, imp: 0, leads: 0, conv: 0 };
-    adsByFuerza[fuerza].gasto += parseFloat(String(a['Gasto Mes'] || a['gasto'] || '0').replace(',', '.'));
-    adsByFuerza[fuerza].imp   += parseInt(a['Impresiones'] || a['impresiones'] || '0');
-    adsByFuerza[fuerza].leads += parseInt(a['Leads'] || a['leads'] || '0');
-    adsByFuerza[fuerza].conv  += parseInt(a['Conversaciones'] || a['conversaciones'] || '0');
-  }
-
-  const adsNum = (v) => { const s = String(v ?? '').replace(',', '.').trim(); const n = parseFloat(s); return isNaN(n) ? 0 : n; };
-  const money = (n) => n ? '$' + adsNum(n).toLocaleString('es-AR', { minimumFractionDigits: 0 }) : '—';
-
-  const rows = fuerzas.map(f => {
-    const vends = allVendors.filter(v => (v['Fuerza de Venta'] || '').trim() === f);
-    const total = vends.length;
-    const ig    = vends.filter(v => v['Instagram']).length;
-    const tt    = vends.filter(v => v['TikTok']).length;
-    const fb    = vends.filter(v => v['Fan Page']).length;
-    const noRed = vends.filter(v => !v['Instagram'] && !v['TikTok'] && !v['Fan Page']).length;
-    const ad    = adsByFuerza[f] || {};
-
-    const bar = (n, t, color) => {
-      const pct = t ? Math.round(n / t * 100) : 0;
-      return `<div class="flex items-center gap-1 justify-center">
-        <span class="${n === t ? 'font-semibold' : ''}">${n}</span>
-        <div class="w-8 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-          <div class="h-full ${color} rounded-full" style="width:${pct}%"></div>
-        </div>
-      </div>`;
-    };
-
-    return `<tr class="border-b border-slate-50 hover:bg-slate-50 cursor-pointer transition-colors"
-                onclick="filtrarFuerza('${f}')">
-      <td class="px-3 py-2.5 font-medium text-violet-700 text-sm">${f}</td>
-      <td class="px-2 py-2.5 text-center font-bold text-slate-800 text-xs">${total}</td>
-      <td class="px-2 py-2.5 text-xs">${bar(ig, total, 'bg-pink-400')}</td>
-      <td class="px-2 py-2.5 text-xs">${bar(tt, total, 'bg-slate-600')}</td>
-      <td class="px-2 py-2.5 text-xs">${bar(fb, total, 'bg-blue-400')}</td>
-      <td class="px-2 py-2.5 text-center text-xs ${noRed > 0 ? 'text-red-400 font-semibold' : 'text-slate-300'}">${noRed || '—'}</td>
-      <td class="px-2 py-2.5 text-center font-mono text-blue-600 text-xs">${ad.gasto ? money(ad.gasto) : '—'}</td>
-      <td class="px-2 py-2.5 text-center font-mono text-xs">${ad.imp ? adsNum(ad.imp).toLocaleString('es-AR') : '—'}</td>
-      <td class="px-2 py-2.5 text-center font-bold text-amber-600 text-xs">${ad.leads ? adsNum(ad.leads).toLocaleString('es-AR') : '—'}</td>
-      <td class="px-2 py-2.5 text-center font-bold text-indigo-600 text-xs">${ad.conv ? adsNum(ad.conv).toLocaleString('es-AR') : '—'}</td>
-    </tr>`;
-  });
-
-  const tot   = allVendors.length;
-  const totIg = allVendors.filter(v => v['Instagram']).length;
-  const totTt = allVendors.filter(v => v['TikTok']).length;
-  const totFb = allVendors.filter(v => v['Fan Page']).length;
-  const totNo = allVendors.filter(v => !v['Instagram'] && !v['TikTok'] && !v['Fan Page']).length;
-  const totAd = Object.values(adsByFuerza).reduce((a, b) => ({ gasto: a.gasto + b.gasto, imp: a.imp + b.imp, leads: a.leads + b.leads, conv: a.conv + b.conv }), { gasto: 0, imp: 0, leads: 0, conv: 0 });
-
-  rows.push(`<tr class="bg-slate-50 font-semibold text-slate-600 border-t border-slate-200">
-    <td class="px-3 py-2.5 text-sm">TOTAL</td>
-    <td class="px-2 py-2.5 text-center text-slate-800 text-xs">${tot}</td>
-    <td class="px-2 py-2.5 text-center text-pink-500 text-xs">${totIg}</td>
-    <td class="px-2 py-2.5 text-center text-slate-700 text-xs">${totTt}</td>
-    <td class="px-2 py-2.5 text-center text-blue-500 text-xs">${totFb}</td>
-    <td class="px-2 py-2.5 text-center text-xs ${totNo > 0 ? 'text-red-400' : 'text-slate-300'}">${totNo || '—'}</td>
-    <td class="px-2 py-2.5 text-center font-mono text-blue-600 text-xs">${money(totAd.gasto)}</td>
-    <td class="px-2 py-2.5 text-center font-mono text-xs">${totAd.imp.toLocaleString('es-AR')}</td>
-    <td class="px-2 py-2.5 text-center font-bold text-amber-600 text-xs">${totAd.leads.toLocaleString('es-AR')}</td>
-    <td class="px-2 py-2.5 text-center font-bold text-indigo-600 text-xs">${totAd.conv.toLocaleString('es-AR')}</td>
-  </tr>`);
-
-  tbody.innerHTML = rows.join('');
-}
-
-window.filtrarFuerza = function(fuerza) {
-  document.getElementById('filter-fuerza').value = fuerza;
-  setTab('vendedores');
-  renderAll();
-};
 
 window.filtrarSucursal = function(area) {
   document.getElementById('filter-area').value = area;
@@ -1273,6 +1098,8 @@ async function init() {
         v['Fuerza de Venta'] = OVERRIDE_FORCE[nombre];
       }
     });
+    // filtrar solo Redes Sociales
+    allVendors = allVendors.filter(v => (v['Fuerza de Venta'] || '').trim() === 'Redes Sociales');
     console.log('init paso 2');
     await loadPhotos();
     console.log('init paso 3');
@@ -1291,22 +1118,14 @@ async function init() {
   if (loading) loading.remove();
 
   buildAreaFilter();
-  buildFuerzaFilter();
-  buildListaFuerzaFilter();
   renderStats();
   renderResumen();
-  renderResumenFuerza();
   renderListaCompleta();
   renderAll();
 
   document.getElementById('search').addEventListener('input', renderAll);
   document.getElementById('filter-area').addEventListener('change', renderAll);
-  document.getElementById('filter-fuerza').addEventListener('change', renderAll);
   document.getElementById('filter-red').addEventListener('change', renderAll);
-  document.getElementById('lista-filter-fuerza').addEventListener('change', () => {
-    renderListaCompleta();
-    renderListaChart();
-  });
 }
 
 // Global: atrapar cualquier error no manejado
