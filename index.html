@@ -1099,7 +1099,11 @@ async function init() {
       }
     });
     // filtrar solo Redes Sociales
+    console.log('Vendors before RS filter:', allVendors.length, allVendors[0] ? Object.keys(allVendors[0]) : 'no data', allVendors[0] ? JSON.stringify(allVendors[0]) : '');
+    const allForces = [...new Set(allVendors.map(v => JSON.stringify(v['Fuerza de Venta'])))];
+    console.log('All force values:', allForces);
     allVendors = allVendors.filter(v => (v['Fuerza de Venta'] || '').trim() === 'Redes Sociales');
+    console.log('Vendors after RS filter:', allVendors.length);
     console.log('init paso 2');
     await loadPhotos();
     console.log('init paso 3');
