@@ -14,6 +14,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <style>
     .card { transition: transform .2s, box-shadow .2s; }
     .card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,.12); }
@@ -59,6 +60,10 @@
     <button id="tab-anuncios" onclick="setTab('anuncios')"
       class="tab-btn px-4 py-2 text-sm font-semibold rounded-t-xl border-b-2 border-transparent text-slate-400 hover:text-slate-600 bg-slate-100 hover:bg-white transition-colors">
       <i class="fas fa-bullhorn mr-1.5"></i>Anuncios
+    </button>
+    <button id="tab-lista" onclick="setTab('lista')"
+      class="tab-btn px-4 py-2 text-sm font-semibold rounded-t-xl border-b-2 border-transparent text-slate-400 hover:text-slate-600 bg-slate-100 hover:bg-white transition-colors">
+      <i class="fas fa-list mr-1.5"></i>Lista Completa
     </button>
   </div>
 </div>
@@ -253,6 +258,61 @@
 
 <!-- ── Upload input ─────────────────────────────────────── -->
 <input type="file" id="file-input" accept="image/*" class="hidden">
+
+<!-- ── Vista Lista Completa ──────────────────────────────── -->
+<div id="vista-lista" class="hidden max-w-screen-xl mx-auto px-4 pb-10 flex flex-col gap-6">
+  <!-- KPIs -->
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+    <div class="bg-white rounded-2xl shadow-sm px-5 py-4 flex items-center gap-4">
+      <div class="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center"><i class="fas fa-users text-lg"></i></div>
+      <div><p class="text-2xl font-bold text-slate-800" id="kpi-total">0</p><p class="text-xs text-slate-400">Vendedores</p></div>
+    </div>
+    <div class="bg-white rounded-2xl shadow-sm px-5 py-4 flex items-center gap-4">
+      <div class="w-10 h-10 rounded-xl bg-green-100 text-green-600 flex items-center justify-center"><i class="fas fa-store text-lg"></i></div>
+      <div><p class="text-2xl font-bold text-slate-800" id="kpi-sucursales">0</p><p class="text-xs text-slate-400">Sucursales</p></div>
+    </div>
+    <div class="bg-white rounded-2xl shadow-sm px-5 py-4 flex items-center gap-4">
+      <div class="w-10 h-10 rounded-xl bg-pink-100 text-pink-600 flex items-center justify-center"><i class="fab fa-instagram text-lg"></i></div>
+      <div><p class="text-2xl font-bold text-slate-800" id="kpi-ig">0</p><p class="text-xs text-slate-400">Con Instagram</p></div>
+    </div>
+    <div class="bg-white rounded-2xl shadow-sm px-5 py-4 flex items-center gap-4">
+      <div class="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center"><i class="fas fa-mobile-screen text-lg"></i></div>
+      <div><p class="text-2xl font-bold text-slate-800" id="kpi-wa">0</p><p class="text-xs text-slate-400">Con WhatsApp</p></div>
+    </div>
+  </div>
+
+  <!-- Gráfico -->
+  <div class="bg-white rounded-2xl shadow-sm p-5">
+    <div class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3"><i class="fas fa-chart-bar text-blue-500 mr-1.5"></i>Vendedores por Sucursal</div>
+    <div class="relative" style="height:220px">
+      <canvas id="chart-sucursal"></canvas>
+    </div>
+  </div>
+
+  <!-- Tabla -->
+  <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
+    <div class="px-5 py-3 border-b border-slate-100 text-xs font-semibold text-slate-500 uppercase tracking-wide flex items-center gap-2">
+      <i class="fas fa-list text-blue-500"></i> Listado
+      <span id="lista-count" class="ml-auto text-slate-400 font-normal normal-case"></span>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="bg-slate-50 border-b border-slate-200">
+            <th class="text-left px-4 py-3 font-semibold text-slate-600">#</th>
+            <th class="text-left px-4 py-3 font-semibold text-slate-600">Nombre</th>
+            <th class="text-left px-4 py-3 font-semibold text-slate-600">Sucursal</th>
+            <th class="text-center px-3 py-3 font-semibold text-pink-500"><i class="fab fa-instagram"></i></th>
+            <th class="text-center px-3 py-3 font-semibold text-slate-700"><i class="fab fa-tiktok"></i></th>
+            <th class="text-center px-3 py-3 font-semibold text-blue-500"><i class="fab fa-facebook"></i></th>
+            <th class="text-center px-3 py-3 font-semibold text-green-600"><i class="fab fa-whatsapp"></i></th>
+          </tr>
+        </thead>
+        <tbody id="lista-body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
 
 <!-- ── Embed Modal ───────────────────────────────────────── -->
 <div id="embed-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -607,6 +667,81 @@ function renderStats() {
   if (noRed > 0) document.getElementById('stat-warn').textContent = `⚠️ Sin redes: ${noRed}`;
 }
 
+// ── Lista completa ────────────────────────────────────────────
+let chartInstance = null;
+
+function renderListaCompleta() {
+  const tbody = document.getElementById('lista-body');
+  const sorted = [...allVendors].sort((a, b) => {
+    const areaCmp = (a['Area'] || '').localeCompare(b['Area'] || '');
+    if (areaCmp !== 0) return areaCmp;
+    return (a['Nombre completo'] || '').localeCompare(b['Nombre completo'] || '');
+  });
+
+  tbody.innerHTML = sorted.map((v, i) => {
+    const ig = (v['Instagram'] || '').trim();
+    const tt = (v['TikTok'] || '').trim();
+    const fb = (v['Fan Page'] || '').trim();
+    const wa = (v['Número de Whastapp Corporativo'] || '').trim();
+    return `<tr class="border-b border-slate-50 hover:bg-slate-50 transition-colors">
+      <td class="px-4 py-2.5 text-slate-400 text-xs font-mono">${i + 1}</td>
+      <td class="px-4 py-2.5 font-medium text-slate-700">${v['Nombre completo']}</td>
+      <td class="px-4 py-2.5 text-slate-500">${v['Area'] || '—'}</td>
+      <td class="px-3 py-2.5 text-center">${ig ? '<i class="fas fa-check text-green-500"></i>' : '<i class="fas fa-times text-slate-200"></i>'}</td>
+      <td class="px-3 py-2.5 text-center">${tt ? '<i class="fas fa-check text-green-500"></i>' : '<i class="fas fa-times text-slate-200"></i>'}</td>
+      <td class="px-3 py-2.5 text-center">${fb ? '<i class="fas fa-check text-green-500"></i>' : '<i class="fas fa-times text-slate-200"></i>'}</td>
+      <td class="px-3 py-2.5 text-center">${wa ? '<i class="fas fa-check text-green-500"></i>' : '<i class="fas fa-times text-slate-200"></i>'}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('lista-count').textContent = `${sorted.length} vendedores`;
+
+  // KPIs
+  const areas = [...new Set(allVendors.map(v => (v['Area'] || '').trim()).filter(Boolean))];
+  const conIg = allVendors.filter(v => v['Instagram']).length;
+  const conWa = allVendors.filter(v => v['Número de Whastapp Corporativo']).length;
+  document.getElementById('kpi-total').textContent = allVendors.length;
+  document.getElementById('kpi-sucursales').textContent = areas.length;
+  document.getElementById('kpi-ig').textContent = conIg;
+  document.getElementById('kpi-wa').textContent = conWa;
+
+}
+
+function renderListaChart() {
+  const ctx = document.getElementById('chart-sucursal');
+  if (!ctx) return;
+  const counts = {};
+  for (const v of allVendors) {
+    const a = (v['Area'] || '').trim();
+    if (a) counts[a] = (counts[a] || 0) + 1;
+  }
+  const labels = Object.keys(counts).sort();
+  const values = labels.map(l => counts[l]);
+  const palette = ['#3b82f6','#8b5cf6','#ec4899','#f59e0b','#10b981','#06b6d4','#ef4444','#f97316','#84cc16','#14b8a6','#6366f1','#d946ef'];
+  if (chartInstance) chartInstance.destroy();
+  chartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Vendedores',
+        data: values,
+        backgroundColor: labels.map((_, i) => palette[i % palette.length]),
+        borderRadius: 6,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { beginAtZero: true, ticks: { stepSize: 1, color: '#94a3b8', font: { size: 11 } }, grid: { color: '#f1f5f9' } },
+        x: { ticks: { color: '#64748b', font: { size: 11 } }, grid: { display: false } }
+      }
+    }
+  });
+}
+
 // ── Photo upload (Cloudinary) ─────────────────────────────────
 window.triggerUpload = function(key) {
   uploadKey = key;
@@ -849,9 +984,11 @@ window.setTab = function(tab) {
   const isVend  = tab === 'vendedores';
   const isRes   = tab === 'resumen';
   const isAds   = tab === 'anuncios';
+  const isLista = tab === 'lista';
   document.getElementById('vista-vendedores').classList.toggle('hidden', !isVend);
   document.getElementById('vista-resumen').classList.toggle('hidden', !isRes);
   document.getElementById('vista-anuncios').classList.toggle('hidden', !isAds);
+  document.getElementById('vista-lista').classList.toggle('hidden', !isLista);
 
   const activeClass   = ['border-blue-500', 'text-blue-600', 'bg-white'];
   const inactiveClass = ['border-transparent', 'text-slate-400', 'bg-slate-100'];
@@ -859,9 +996,12 @@ window.setTab = function(tab) {
   const tVend   = document.getElementById('tab-vendedores');
   const tRes    = document.getElementById('tab-resumen');
   const tAds    = document.getElementById('tab-anuncios');
+  const tLista  = document.getElementById('tab-lista');
 
-  activeClass.forEach(c => { tVend.classList.toggle(c, isVend); tRes.classList.toggle(c, isRes); tAds.classList.toggle(c, isAds); });
-  inactiveClass.forEach(c => { tVend.classList.toggle(c, !isVend); tRes.classList.toggle(c, !isRes); tAds.classList.toggle(c, !isAds); });
+  activeClass.forEach(c => { tVend.classList.toggle(c, isVend); tRes.classList.toggle(c, isRes); tAds.classList.toggle(c, isAds); tLista.classList.toggle(c, isLista); });
+  inactiveClass.forEach(c => { tVend.classList.toggle(c, !isVend); tRes.classList.toggle(c, !isRes); tAds.classList.toggle(c, !isAds); tLista.classList.toggle(c, !isLista); });
+
+  if (isLista) setTimeout(renderListaChart, 100);
 };
 
 // ── Meta Ads ─────────────────────────────────────────────────
@@ -886,15 +1026,31 @@ const INTERNAL_VENDORS = [
   'SD/Tonal  - M&A Equipamientos Comerciales - Self',
 ];
 
+const BAJA_VENDORS = [
+  'FUNES BURGOS FACUNDO JAVIER',
+  'RUIZ CAMILA ROCIO',
+  'OLMOS MATIAS EXEQUIEL',
+  'VIDELA GAMBOA CARLA BELEN',
+  'GUTIERREZ JONATHAN PEDRO',
+];
+
+const EXTRA_VENDORS = [
+  { 'Area': 'JUJUY', 'Nombre completo': 'VILTE JOEL', 'Instagram': '', 'TikTok': '', 'Fan Page': '', 'Número de Whastapp Corporativo': '', 'Fuerza de Venta': 'Redes Sociales' },
+];
+
+function isBaja(nombre) {
+  return BAJA_VENDORS.includes((nombre || '').trim().toUpperCase());
+}
+
 async function loadAds() {
   const [resumen, campanas, diario] = await Promise.all([
     parseSheetCsv(META_ADS_URL),
     parseSheetCsv(CAMPANAS_URL),
     parseSheetCsv(DIARIO_URL),
   ]);
-  adsData = resumen.filter(d => d['Vendedor'] && d['Vendedor'].trim() && !INTERNAL_VENDORS.includes(d['Vendedor'].trim()));
-  campanasData = campanas.filter(d => d['Campana'] && d['Campana'].trim());
-  diarioData = diario.filter(d => d['Fecha'] && d['Vendedor'] && d['Vendedor'].trim() && !INTERNAL_VENDORS.includes(d['Vendedor'].trim()));
+  adsData = resumen.filter(d => d['Vendedor'] && d['Vendedor'].trim() && !INTERNAL_VENDORS.includes(d['Vendedor'].trim()) && !isBaja(d['Vendedor'].trim()));
+  campanasData = campanas.filter(d => d['Campana'] && d['Campana'].trim()).filter(d => !isBaja(d['Vendedor']));
+  diarioData = diario.filter(d => d['Fecha'] && d['Vendedor'] && d['Vendedor'].trim() && !INTERNAL_VENDORS.includes(d['Vendedor'].trim()) && !isBaja(d['Vendedor'].trim()));
   setDefaultDateRange();
   renderAdsTable();
 }
@@ -1075,7 +1231,7 @@ window.closeAdsDetail = function() {
 async function init() {
   try {
     console.log('init paso 1');
-    allVendors = await loadVendors();
+    allVendors = (await loadVendors()).filter(v => !isBaja(v['Nombre completo'])).concat(EXTRA_VENDORS);
     console.log('init paso 2');
     await loadPhotos();
     console.log('init paso 3');
@@ -1098,6 +1254,7 @@ async function init() {
   renderStats();
   renderResumen();
   renderResumenFuerza();
+  renderListaCompleta();
   renderAll();
 
   document.getElementById('search').addEventListener('input', renderAll);
