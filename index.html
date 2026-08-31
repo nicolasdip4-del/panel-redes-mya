@@ -11,79 +11,186 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <style>
-    .card { transition: transform .2s, box-shadow .2s; }
-    .card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,.12); }
+    :root {
+      --accent: 59 130 246;       /* blue-500 */
+      --accent-soft: 30 58 138;
+      --bg: 11 13 18;             /* #0b0d12 */
+      --surface: 18 21 28;        /* #12151c */
+      --surface-2: 25 29 38;      /* #191d26 */
+      --border: 255 255 255;
+    }
+    body { font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif; background: rgb(var(--bg)); }
+    h1, .font-display { font-family: 'Jost', 'Plus Jakarta Sans', sans-serif; }
+    .tabular-num { font-variant-numeric: tabular-nums; }
+
+    .surface { background: rgb(var(--surface)); border: 1px solid rgb(var(--border) / .08); }
+    .surface-2 { background: rgb(var(--surface-2)); }
+
+    /* Card: spotlight-border pattern (uiverse.io style), tuned for dark surfaces */
+    /* Neumorphic card (uiverse.io by aadium, adapted): dual soft shadow on same-tone bg */
+    .card {
+      position: relative;
+      isolation: isolate;
+      background: rgb(var(--bg));
+      border: none;
+      box-shadow: 7px 7px 16px rgba(0, 0, 0, .5), -6px -6px 16px rgba(255, 255, 255, .035);
+      transition: transform .25s cubic-bezier(.2,.8,.2,1), box-shadow .25s ease;
+    }
+    .card::before {
+      content: '';
+      position: absolute;
+      inset: -1px;
+      border-radius: inherit;
+      padding: 1px;
+      background: radial-gradient(200px circle at var(--mx, 50%) var(--my, 50%), rgb(var(--accent) / .8), transparent 70%);
+      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      opacity: 0;
+      transition: opacity .3s ease;
+      pointer-events: none;
+      z-index: 1;
+    }
+    .card:hover::before { opacity: 1; }
+    .card:hover {
+      transform: translateY(-3px);
+      box-shadow: 10px 10px 22px rgba(0, 0, 0, .6), -6px -6px 18px rgba(255, 255, 255, .045), 0 0 0 1px rgb(var(--accent) / .12);
+    }
+    .card:active { transform: translateY(-1px) scale(.995); }
+
     .photo-wrap { cursor: pointer; }
     .photo-wrap .cam-overlay { opacity: 0; transition: opacity .2s; }
     .photo-wrap:hover .cam-overlay { opacity: 1; }
-    .social-link { transition: transform .15s; display: inline-flex; }
-    .social-link:hover { transform: scale(1.15); }
-    ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+    .photo-wrap:hover .photo-ring { box-shadow: 0 0 0 3px rgb(var(--accent) / .4); }
+    .photo-ring { transition: box-shadow .2s ease; }
+
+    .social-link { transition: transform .15s ease, background-color .15s ease; display: inline-flex; }
+    .social-link:hover { transform: scale(1.18) rotate(-4deg); }
+    .social-link:active { transform: scale(0.94); }
+
+    /* Buttons */
+    .btn-press { transition: transform .12s ease, box-shadow .2s ease, background-color .15s ease; }
+    .btn-press:active { transform: scale(.96); }
+
+    .wa-btn {
+      background: linear-gradient(135deg, #16a34a, #15803d);
+      box-shadow: 0 2px 8px -2px rgba(21, 128, 61, .5);
+    }
+    .wa-btn:hover { box-shadow: 0 6px 16px -4px rgba(21, 128, 61, .6); transform: translateY(-1px); }
+    .wa-btn:active { transform: translateY(0) scale(.97); }
+
+    /* Sidebar nav */
+    .nav-link { position: relative; transition: color .2s ease, background-color .2s ease; }
+    .nav-link.is-active { background: rgb(var(--accent) / .12); color: #fff; }
+    .nav-link.is-active::before {
+      content: '';
+      position: absolute; left: -12px; top: 8px; bottom: 8px; width: 3px;
+      background: rgb(var(--accent)); border-radius: 3px;
+    }
+
+    input, select { background: rgb(var(--surface)); color: rgb(226 232 240); }
+    input::placeholder { color: rgb(100 116 139); }
+    input:focus, select:focus { box-shadow: 0 0 0 3px rgb(var(--accent) / .25); border-color: rgb(var(--accent) / .5) !important; }
+
+    /* Skeleton loader */
+    .skeleton { position: relative; overflow: hidden; background: rgb(var(--surface-2)); }
+    .skeleton::after {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,.08), transparent);
+      transform: translateX(-100%);
+      animation: shimmer 1.4s infinite;
+    }
+    @keyframes shimmer { 100% { transform: translateX(100%); } }
+
+    @keyframes toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    #toast.show { animation: toast-in .25s ease-out; }
+
+    /* Sidebar responsive drawer */
+    #sidebar { transition: transform .25s ease; }
+    @media (max-width: 767px) {
+      #sidebar { position: fixed; inset: 0 auto 0 0; transform: translateX(-100%); z-index: 40; width: 240px; }
+      #sidebar.open { transform: translateX(0); }
+      #sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 30; }
+      #sidebar-overlay.open { display: block; }
+      #main-content { margin-left: 0 !important; }
+    }
+
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-thumb { background: rgb(var(--surface-2)); border-radius: 3px; }
   </style>
 </head>
-<body class="bg-slate-100 min-h-screen font-sans">
+<body class="min-h-screen font-sans text-slate-200">
 
-<!-- ── Header ──────────────────────────────────────────── -->
-<header class="bg-gradient-to-r from-slate-900 to-blue-900 text-white shadow-xl">
-  <div class="max-w-screen-xl mx-auto px-5 py-4 flex items-center justify-between gap-4 flex-wrap">
-    <div>
-      <h1 class="text-xl font-bold tracking-tight">Panel de Redes Sociales - Fuerzas de Ventas</h1>
-      <p class="text-slate-300 text-xs mt-0.5">M&A Equipamientos Comerciales</p>
-    </div>
-    <div id="stats-bar" class="flex flex-wrap gap-3 text-xs text-slate-300">
-      <span id="stat-total"></span>
-      <span id="stat-ig" class="text-pink-300"></span>
-      <span id="stat-tt" class="text-slate-300"></span>
-      <span id="stat-fb" class="text-blue-300"></span>
-      <span id="stat-warn" class="text-red-300"></span>
-    </div>
-  </div>
-</header>
-
-<!-- ── Tabs ───────────────────────────────────────────────── -->
-<div class="max-w-screen-xl mx-auto px-4 pt-4 pb-2">
-  <div class="flex gap-1">
-    <button id="tab-vendedores" onclick="setTab('vendedores')"
-      class="tab-btn px-4 py-2 text-sm font-semibold rounded-t-xl border-b-2 border-blue-500 text-blue-600 bg-white transition-colors">
-      <i class="fas fa-users mr-1.5"></i>Vendedores
-    </button>
-    <button id="tab-resumen" onclick="setTab('resumen')"
-      class="tab-btn px-4 py-2 text-sm font-semibold rounded-t-xl border-b-2 border-transparent text-slate-400 hover:text-slate-600 bg-slate-100 hover:bg-white transition-colors">
-      <i class="fas fa-chart-bar mr-1.5"></i>Resumen
-    </button>
-    <button id="tab-anuncios" onclick="setTab('anuncios')"
-      class="tab-btn px-4 py-2 text-sm font-semibold rounded-t-xl border-b-2 border-transparent text-slate-400 hover:text-slate-600 bg-slate-100 hover:bg-white transition-colors">
-      <i class="fas fa-bullhorn mr-1.5"></i>Anuncios
-    </button>
-    <button id="tab-lista" onclick="setTab('lista')"
-      class="tab-btn px-4 py-2 text-sm font-semibold rounded-t-xl border-b-2 border-transparent text-slate-400 hover:text-slate-600 bg-slate-100 hover:bg-white transition-colors">
-      <i class="fas fa-list mr-1.5"></i>Lista Completa
-    </button>
-  </div>
+<!-- ── Mobile topbar ──────────────────────────────────────── -->
+<div class="md:hidden sticky top-0 z-20 flex items-center gap-3 px-4 py-3 surface border-b border-white/5">
+  <button onclick="toggleSidebar()" class="btn-press w-9 h-9 rounded-lg surface-2 flex items-center justify-center text-slate-300">
+    <i class="fas fa-bars"></i>
+  </button>
+  <span class="font-display text-sm font-semibold tracking-tight">Panel de Redes</span>
 </div>
+<div id="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+<div class="md:flex">
+  <!-- ── Sidebar ──────────────────────────────────────────── -->
+  <aside id="sidebar" class="surface md:sticky md:top-0 md:h-screen w-60 shrink-0 flex flex-col border-r border-white/5">
+    <div class="relative px-5 py-5 border-b border-white/5 overflow-hidden">
+      <div class="absolute inset-0 bg-[radial-gradient(80%_100%_at_0%_0%,rgba(59,130,246,.25),transparent_60%)]"></div>
+      <div class="relative">
+        <h1 class="font-display text-base font-semibold tracking-tight leading-snug">Panel de Redes Sociales</h1>
+        <p class="text-slate-500 text-xs mt-0.5">M&A Equipamientos Comerciales</p>
+      </div>
+    </div>
+
+    <nav class="flex flex-col gap-1 px-3 py-4">
+      <button id="tab-vendedores" onclick="setTab('vendedores')"
+        class="nav-link is-active flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-300 text-left">
+        <i class="fas fa-users w-4 text-center"></i>Vendedores
+      </button>
+      <button id="tab-lista" onclick="setTab('lista')"
+        class="nav-link flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:text-slate-200 hover:bg-white/5 text-left">
+        <i class="fas fa-list w-4 text-center"></i>Lista Completa
+      </button>
+    </nav>
+
+    <div id="stats-bar" class="mt-auto flex flex-col gap-1.5 px-5 py-5 border-t border-white/5 text-xs text-slate-400 tabular-num">
+      <span id="stat-total"></span>
+      <span id="stat-ig" class="text-pink-400"></span>
+      <span id="stat-tt" class="text-slate-300"></span>
+      <span id="stat-fb" class="text-blue-400"></span>
+      <span id="stat-warn" class="text-red-400"></span>
+    </div>
+  </aside>
+
+  <main id="main-content" class="flex-1 min-w-0">
 
 <!-- ── Vista Vendedores ───────────────────────────────────── -->
-<div id="vista-vendedores" class="max-w-screen-xl mx-auto px-4">
+<div id="vista-vendedores" class="px-4 md:px-6 py-6">
 
   <!-- Filtros -->
-  <div class="bg-white rounded-2xl shadow-sm px-4 py-3 flex flex-wrap gap-3 items-center mb-4">
+  <div class="surface rounded-2xl px-4 py-3 flex flex-wrap gap-3 items-center mb-4">
     <div class="relative min-w-48 flex-1">
-      <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+      <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
       <input id="search" type="text" placeholder="Buscar vendedor..."
-        class="w-full pl-8 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300">
+        class="w-full pl-8 pr-3 py-2 text-sm border border-white/10 rounded-xl outline-none transition-shadow">
     </div>
     <select id="filter-area"
-      class="py-2 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white">
+      class="py-2 px-3 text-sm border border-white/10 rounded-xl outline-none transition-shadow">
       <option value="">Todas las sucursales</option>
     </select>
+    <select id="filter-fuerza"
+      class="py-2 px-3 text-sm border border-white/10 rounded-xl outline-none transition-shadow">
+      <option value="">Todas las fuerzas de venta</option>
+    </select>
     <select id="filter-red"
-      class="py-2 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white">
+      class="py-2 px-3 text-sm border border-white/10 rounded-xl outline-none transition-shadow">
       <option value="">Todas las redes</option>
       <option value="instagram">Con Instagram</option>
       <option value="tiktok">Con TikTok</option>
@@ -92,194 +199,92 @@
       <option value="incompleto">Incompletos</option>
       <option value="sin-redes">Sin redes</option>
     </select>
-    <span id="count" class="text-xs text-slate-400 ml-auto whitespace-nowrap"></span>
+    <span id="count" class="text-xs text-slate-500 ml-auto whitespace-nowrap"></span>
   </div>
 
   <!-- Grid -->
   <div id="grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 pb-10"></div>
-  <div id="loading" class="flex flex-col items-center py-20 text-slate-400 gap-3">
-    <i class="fas fa-spinner fa-spin text-4xl text-blue-400"></i>
-    <p class="text-sm">Cargando vendedores...</p>
-  </div>
-</div>
-
-<!-- ── Vista Resumen ──────────────────────────────────────── -->
-<div id="vista-resumen" class="hidden max-w-screen-xl mx-auto px-4 pb-10 flex flex-col gap-6">
-  <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
-    <div class="px-5 py-3 border-b border-slate-100 text-xs font-semibold text-slate-500 uppercase tracking-wide">Por Sucursal</div>
-      <div class="overflow-x-auto">
-        <table class="w-full text-sm">
-          <thead>
-            <tr class="bg-slate-50 border-b border-slate-200">
-              <th class="text-left px-3 py-3 font-semibold text-slate-600">Sucursal</th>
-              <th class="text-center px-2 py-3 font-semibold text-slate-600">Total</th>
-              <th class="text-center px-2 py-3 font-semibold text-pink-500"><i class="fab fa-instagram"></i> IG</th>
-              <th class="text-center px-2 py-3 font-semibold text-slate-700"><i class="fab fa-tiktok"></i> TT</th>
-              <th class="text-center px-2 py-3 font-semibold text-blue-500"><i class="fab fa-facebook"></i> FB</th>
-              <th class="text-center px-2 py-3 font-semibold text-red-400">Sin</th>
-              <th class="text-center px-2 py-3 font-semibold text-blue-600">Gasto Mes</th>
-              <th class="text-center px-2 py-3 font-semibold text-slate-600">Impresiones</th>
-              <th class="text-center px-2 py-3 font-semibold text-amber-600">Leads</th>
-              <th class="text-center px-2 py-3 font-semibold text-indigo-600">Conversaciones</th>
-            </tr>
-          </thead>
-          <tbody id="resumen-body"></tbody>
-        </table>
-      </div>
-</div>
-
-<!-- ── Vista Anuncios ─────────────────────────────────────── -->
-
-<!-- ── Vista Anuncios ─────────────────────────────────────── -->
-<div id="vista-anuncios" class="hidden max-w-screen-xl mx-auto px-4 pb-10">
-  <!-- Filtros -->
-  <div class="bg-white rounded-2xl shadow-sm px-4 py-3 flex flex-wrap gap-3 items-center mb-4">
-    <label class="text-xs font-semibold text-slate-500">Desde:</label>
-    <input id="ads-desde" type="date"
-      class="py-1.5 px-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300">
-    <label class="text-xs font-semibold text-slate-500">Hasta:</label>
-    <input id="ads-hasta" type="date"
-      class="py-1.5 px-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300">
-    <button onclick="applyDateFilter()"
-      class="py-1.5 px-3 text-xs font-semibold bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
-      <i class="fas fa-filter mr-1"></i>Filtrar
-    </button>
-    <button onclick="clearDateFilter()"
-      class="py-1.5 px-3 text-xs font-semibold bg-slate-200 text-slate-600 rounded-lg hover:bg-slate-300 transition-colors">
-      <i class="fas fa-times mr-1"></i>Limpiar
-    </button>
-    <span id="ads-range-info" class="text-xs text-slate-400 ml-auto"></span>
-  </div>
-
-  <!-- Vista detalle (cuando se clickea un vendedor) -->
-  <div id="ads-detail" class="hidden mb-4">
-    <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
-      <div class="px-5 py-3 border-b border-slate-100 flex items-center gap-2">
-        <button onclick="closeAdsDetail()"
-          class="text-sm text-blue-500 hover:text-blue-700 transition-colors">
-          <i class="fas fa-arrow-left mr-1"></i> Volver
-        </button>
-        <span class="text-xs font-semibold text-slate-500 uppercase tracking-wide ml-2">
-          <i class="fas fa-bullhorn text-blue-500 mr-1"></i> Campañas de:
-        </span>
-        <span id="ads-detail-vendor" class="text-sm font-bold text-slate-700"></span>
-        <span id="ads-detail-branch" class="text-xs text-slate-400"></span>
-        <span id="ads-detail-date" class="ml-auto text-xs text-slate-400"></span>
-      </div>
-      <div class="overflow-x-auto">
-        <table class="w-full text-sm">
-          <thead>
-            <tr class="bg-slate-50 border-b border-slate-200">
-              <th class="text-left px-4 py-3 font-semibold text-slate-600">Campana</th>
-              <th class="text-center px-3 py-3 font-semibold text-slate-600">Estado</th>
-              <th class="text-center px-3 py-3 font-semibold text-slate-600">Objetivo</th>
-              <th class="text-center px-3 py-3 font-semibold text-emerald-600">Antiguedad</th>
-              <th class="text-center px-3 py-3 font-semibold text-blue-600">Gasto</th>
-              <th class="text-center px-3 py-3 font-semibold text-slate-600">Impresiones</th>
-              <th class="text-center px-3 py-3 font-semibold text-slate-600">Alcance</th>
-              <th class="text-center px-3 py-3 font-semibold text-slate-600">Clics</th>
-              <th class="text-center px-3 py-3 font-semibold text-amber-600">Leads</th>
-              <th class="text-center px-3 py-3 font-semibold text-indigo-600">Conversaciones</th>
-              <th class="text-center px-3 py-3 font-semibold text-slate-600">CTR</th>
-              <th class="text-center px-3 py-3 font-semibold text-slate-600">CPC</th>
-              <th class="text-center px-3 py-3 font-semibold text-slate-600">CPM</th>
-              <th class="text-center px-3 py-3 font-semibold text-slate-600">Costo/Lead</th>
-              <th class="text-center px-3 py-3 font-semibold text-rose-600">Costo/Resultado</th>
-            </tr>
-          </thead>
-          <tbody id="ads-detail-body"></tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-
-  <!-- Tabla principal -->
-  <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
-    <div class="px-5 py-3 border-b border-slate-100 text-xs font-semibold text-slate-500 uppercase tracking-wide flex items-center gap-2">
-      <i class="fas fa-bullhorn text-blue-500"></i> Meta Ads - Rendimiento de Anuncios
-      <span id="ads-date" class="ml-auto text-slate-400 font-normal normal-case"></span>
-    </div>
-    <div class="overflow-x-auto">
-      <table class="w-full text-sm">
-        <thead>
-          <tr class="bg-slate-50 border-b border-slate-200">
-            <th class="text-center px-2 py-3 font-semibold text-slate-600 w-10"></th>
-            <th class="text-left px-4 py-3 font-semibold text-slate-600">Vendedor</th>
-            <th class="text-left px-4 py-3 font-semibold text-slate-600">Sucursal</th>
-            <th class="text-center px-3 py-3 font-semibold text-emerald-600">Campanas</th>
-            <th class="text-center px-3 py-3 font-semibold text-blue-600">Gasto Hoy</th>
-            <th class="text-center px-3 py-3 font-semibold text-blue-600">Gasto Mes</th>
-            <th class="text-center px-3 py-3 font-semibold text-slate-600">Impresiones</th>
-            <th class="text-center px-3 py-3 font-semibold text-slate-600">Alcance</th>
-            <th class="text-center px-3 py-3 font-semibold text-slate-600">Clics</th>
-            <th class="text-center px-3 py-3 font-semibold text-amber-600">Leads</th>
-            <th class="text-center px-3 py-3 font-semibold text-indigo-600">Conversaciones</th>
-            <th class="text-center px-3 py-3 font-semibold text-slate-600">CTR</th>
-            <th class="text-center px-3 py-3 font-semibold text-slate-600">CPM</th>
-            <th class="text-center px-3 py-3 font-semibold text-slate-600">CPC</th>
-            <th class="text-center px-3 py-3 font-semibold text-slate-600">Costo/Lead</th>
-            <th class="text-center px-3 py-3 font-semibold text-rose-600">Costo/Resultado</th>
-          </tr>
-        </thead>
-        <tbody id="ads-body"></tbody>
-      </table>
-    </div>
-    <div id="ads-loading" class="flex flex-col items-center py-12 text-slate-400 gap-3">
-      <i class="fas fa-spinner fa-spin text-3xl text-blue-400"></i>
-      <p class="text-sm">Cargando datos de anuncios...</p>
-    </div>
-  </div>
+  <div id="loading" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 pb-10"></div>
+  <script>
+    document.getElementById('loading').innerHTML = Array.from({length: 12}).map(() => `
+      <div class="rounded-[1.75rem] p-3 flex flex-col items-center gap-2.5" style="background: rgb(var(--bg)); box-shadow: 7px 7px 16px rgba(0,0,0,.5), -6px -6px 16px rgba(255,255,255,.035);">
+        <div class="skeleton w-16 h-16 rounded-full"></div>
+        <div class="skeleton h-3 w-20 rounded"></div>
+        <div class="skeleton h-3 w-14 rounded-full"></div>
+        <div class="skeleton h-6 w-full rounded-lg mt-1"></div>
+      </div>`).join('');
+  </script>
 </div>
 
 <!-- ── Upload input ─────────────────────────────────────── -->
 <input type="file" id="file-input" accept="image/*" class="hidden">
 
 <!-- ── Vista Lista Completa ──────────────────────────────── -->
-<div id="vista-lista" class="hidden max-w-screen-xl mx-auto px-4 pb-10 flex flex-col gap-6">
+<div id="vista-lista" class="hidden px-4 md:px-6 py-6 flex flex-col gap-6">
+
+  <!-- Filtros -->
+  <div class="surface rounded-2xl px-4 py-3 flex flex-wrap gap-3 items-center">
+    <div class="relative min-w-48 flex-1">
+      <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+      <input id="search-lista" type="text" placeholder="Buscar vendedor..."
+        class="w-full pl-8 pr-3 py-2 text-sm border border-white/10 rounded-xl outline-none transition-shadow">
+    </div>
+    <select id="filter-area-lista"
+      class="py-2 px-3 text-sm border border-white/10 rounded-xl outline-none transition-shadow">
+      <option value="">Todas las sucursales</option>
+    </select>
+    <select id="filter-puesto-lista"
+      class="py-2 px-3 text-sm border border-white/10 rounded-xl outline-none transition-shadow">
+      <option value="">Todos los puestos</option>
+    </select>
+    <span id="lista-filter-count" class="text-xs text-slate-500 ml-auto whitespace-nowrap"></span>
+  </div>
+
   <!-- KPIs -->
   <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-    <div class="bg-white rounded-2xl shadow-sm px-5 py-4 flex items-center gap-4">
-      <div class="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center"><i class="fas fa-users text-lg"></i></div>
-      <div><p class="text-2xl font-bold text-slate-800" id="kpi-total">0</p><p class="text-xs text-slate-400">Vendedores</p></div>
+    <div class="surface rounded-2xl px-5 py-4 flex items-center gap-4">
+      <div class="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center"><i class="fas fa-users text-lg"></i></div>
+      <div><p class="font-display text-2xl font-bold text-slate-100 tabular-num" id="kpi-total">0</p><p class="text-xs text-slate-500">Vendedores</p></div>
     </div>
-    <div class="bg-white rounded-2xl shadow-sm px-5 py-4 flex items-center gap-4">
-      <div class="w-10 h-10 rounded-xl bg-green-100 text-green-600 flex items-center justify-center"><i class="fas fa-store text-lg"></i></div>
-      <div><p class="text-2xl font-bold text-slate-800" id="kpi-sucursales">0</p><p class="text-xs text-slate-400">Sucursales</p></div>
+    <div class="surface rounded-2xl px-5 py-4 flex items-center gap-4">
+      <div class="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center"><i class="fas fa-store text-lg"></i></div>
+      <div><p class="font-display text-2xl font-bold text-slate-100 tabular-num" id="kpi-sucursales">0</p><p class="text-xs text-slate-500">Sucursales</p></div>
     </div>
-    <div class="bg-white rounded-2xl shadow-sm px-5 py-4 flex items-center gap-4">
-      <div class="w-10 h-10 rounded-xl bg-pink-100 text-pink-600 flex items-center justify-center"><i class="fab fa-instagram text-lg"></i></div>
-      <div><p class="text-2xl font-bold text-slate-800" id="kpi-ig">0</p><p class="text-xs text-slate-400">Con Instagram</p></div>
+    <div class="surface rounded-2xl px-5 py-4 flex items-center gap-4">
+      <div class="w-10 h-10 rounded-xl bg-pink-500/10 text-pink-400 flex items-center justify-center"><i class="fab fa-instagram text-lg"></i></div>
+      <div><p class="font-display text-2xl font-bold text-slate-100 tabular-num" id="kpi-ig">0</p><p class="text-xs text-slate-500">Con Instagram</p></div>
     </div>
-    <div class="bg-white rounded-2xl shadow-sm px-5 py-4 flex items-center gap-4">
-      <div class="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center"><i class="fas fa-mobile-screen text-lg"></i></div>
-      <div><p class="text-2xl font-bold text-slate-800" id="kpi-wa">0</p><p class="text-xs text-slate-400">Con WhatsApp</p></div>
+    <div class="surface rounded-2xl px-5 py-4 flex items-center gap-4">
+      <div class="w-10 h-10 rounded-xl bg-slate-500/10 text-slate-300 flex items-center justify-center"><i class="fas fa-mobile-screen text-lg"></i></div>
+      <div><p class="font-display text-2xl font-bold text-slate-100 tabular-num" id="kpi-wa">0</p><p class="text-xs text-slate-500">Con WhatsApp</p></div>
     </div>
   </div>
 
   <!-- Gráfico -->
-  <div class="bg-white rounded-2xl shadow-sm p-5">
-    <div class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3"><i class="fas fa-chart-bar text-blue-500 mr-1.5"></i>Vendedores por Sucursal</div>
+  <div class="surface rounded-2xl p-5">
+    <div class="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3"><i class="fas fa-chart-bar text-blue-400 mr-1.5"></i>Vendedores por Sucursal</div>
     <div class="relative" style="height:220px">
       <canvas id="chart-sucursal"></canvas>
     </div>
   </div>
 
   <!-- Tabla -->
-  <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
-    <div class="px-5 py-3 border-b border-slate-100 text-xs font-semibold text-slate-500 uppercase tracking-wide flex items-center gap-2">
-      <i class="fas fa-list text-blue-500"></i> Listado
-      <span id="lista-count" class="ml-auto text-slate-400 font-normal normal-case"></span>
+  <div class="surface rounded-2xl overflow-hidden">
+    <div class="px-5 py-3 border-b border-white/5 text-xs font-semibold text-slate-400 uppercase tracking-wide flex items-center gap-2">
+      <i class="fas fa-list text-blue-400"></i> Listado
+      <span id="lista-count" class="ml-auto text-slate-500 font-normal normal-case"></span>
     </div>
     <div class="overflow-x-auto">
       <table class="w-full text-sm">
         <thead>
-          <tr class="bg-slate-50 border-b border-slate-200">
-            <th class="text-left px-4 py-3 font-semibold text-slate-600">#</th>
-            <th class="text-left px-4 py-3 font-semibold text-slate-600">Nombre</th>
-            <th class="text-left px-4 py-3 font-semibold text-slate-600">Sucursal</th>
-            <th class="text-center px-3 py-3 font-semibold text-pink-500"><i class="fab fa-instagram"></i></th>
-            <th class="text-center px-3 py-3 font-semibold text-slate-700"><i class="fab fa-tiktok"></i></th>
-            <th class="text-center px-3 py-3 font-semibold text-blue-500"><i class="fab fa-facebook"></i></th>
+          <tr class="surface-2 border-b border-white/5">
+            <th class="text-left px-4 py-3 font-semibold text-slate-400">#</th>
+            <th class="text-left px-4 py-3 font-semibold text-slate-400">Nombre</th>
+            <th class="text-left px-4 py-3 font-semibold text-slate-400">Sucursal</th>
+            <th class="text-left px-4 py-3 font-semibold text-slate-400">Puesto</th>
+            <th class="text-center px-3 py-3 font-semibold text-pink-400"><i class="fab fa-instagram"></i></th>
+            <th class="text-center px-3 py-3 font-semibold text-slate-300"><i class="fab fa-tiktok"></i></th>
+            <th class="text-center px-3 py-3 font-semibold text-blue-400"><i class="fab fa-facebook"></i></th>
             <th class="text-center px-3 py-3 font-semibold text-green-600"><i class="fab fa-whatsapp"></i></th>
           </tr>
         </thead>
@@ -289,10 +294,13 @@
   </div>
 </div>
 
+  </main>
+</div>
+
 <!-- ── Embed Modal ───────────────────────────────────────── -->
 <div id="embed-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
-  <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" onclick="closeModal()"></div>
-  <div class="relative bg-slate-900 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+  <div class="absolute inset-0 bg-slate-950/70 backdrop-blur-sm" onclick="closeModal()"></div>
+  <div class="relative bg-slate-900 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden border border-slate-700/60">
     <!-- Header -->
     <div id="modal-header" class="flex items-center gap-3 px-4 py-3 border-b border-slate-700">
       <i id="modal-icon" class="text-lg"></i>
@@ -300,14 +308,24 @@
         <p id="modal-name" class="text-white text-sm font-semibold"></p>
         <p id="modal-handle" class="text-slate-400 text-xs"></p>
       </div>
-      <button onclick="closeModal()" class="ml-auto text-slate-400 hover:text-white transition-colors">
-        <i class="fas fa-times text-lg"></i>
+      <button onclick="closeModal()" class="btn-press ml-auto text-slate-400 hover:text-white w-7 h-7 rounded-full hover:bg-slate-800 flex items-center justify-center transition-colors">
+        <i class="fas fa-times text-base"></i>
       </button>
     </div>
     <!-- iFrame -->
     <div class="relative bg-slate-800" style="height:520px">
       <div id="modal-loading" class="absolute inset-0 flex items-center justify-center text-slate-400">
         <i class="fas fa-spinner fa-spin text-2xl"></i>
+      </div>
+      <div id="modal-no-embed" class="hidden absolute inset-0 flex flex-col items-center justify-center gap-3 text-center px-6">
+        <i id="modal-no-embed-icon" class="text-4xl text-slate-600"></i>
+        <p class="text-slate-300 text-sm">Vista previa no disponible en esta red.</p>
+        <p class="text-slate-500 text-xs -mt-1">La plataforma no permite mostrar perfiles embebidos.</p>
+        <a id="modal-no-embed-link" href="#" target="_blank"
+           class="btn-press mt-2 flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white"
+           style="background: rgb(var(--accent))">
+          <i class="fas fa-external-link-alt"></i> Abrir perfil
+        </a>
       </div>
       <iframe id="embed-iframe" src="" class="w-full h-full border-0"
               onload="document.getElementById('modal-loading').style.display='none'"></iframe>
@@ -346,22 +364,17 @@ const CLOUDINARY_PRESET = 'x5gqnsmf';
 const SHEET_ID  = '1VNDYPC2Uw3Yq856In5hpdfR0ZrmuOWnZov4_LwXF79s';
 const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=0`;
 
-const META_ADS_SHEET_ID = '1DulFJH0a2Ybc74bVgXxqjTedfwzwg9iC8J8gI28ORvo';
-const META_ADS_URL      = `https://docs.google.com/spreadsheets/d/${META_ADS_SHEET_ID}/export?format=csv&gid=1015531289`;
-const CAMPANAS_URL      = `https://docs.google.com/spreadsheets/d/${META_ADS_SHEET_ID}/export?format=csv&gid=1670895855`;
-const DIARIO_URL        = `https://docs.google.com/spreadsheets/d/${META_ADS_SHEET_ID}/export?format=csv&gid=1729087505`;
-
 const AREA_COLORS = {
-  'SALTA':            'bg-purple-100 text-purple-800',
-  'JUJUY':            'bg-sky-100 text-sky-800',
-  'SANTIAGO':         'bg-green-100 text-green-800',
-  'NORTE INTERIOR':   'bg-amber-100 text-amber-800',
-  'NORTE CENTR':      'bg-orange-100 text-orange-800',
-  'TUCUMAN CAPITAL':  'bg-red-100 text-red-800',
-  'TUCUMAN INTERIOR': 'bg-rose-100 text-rose-800',
-  'LA RIOJA':         'bg-indigo-100 text-indigo-800',
-  'CATAMARCA':        'bg-teal-100 text-teal-800',
-  'CORDOBA':          'bg-cyan-100 text-cyan-800',
+  'SALTA':            'bg-purple-500/10 text-purple-300',
+  'JUJUY':            'bg-sky-500/10 text-sky-300',
+  'SANTIAGO':         'bg-green-500/10 text-green-300',
+  'NORTE INTERIOR':   'bg-amber-500/10 text-amber-300',
+  'NORTE CENTR':      'bg-orange-500/10 text-orange-300',
+  'TUCUMAN CAPITAL':  'bg-red-500/10 text-red-300',
+  'TUCUMAN INTERIOR': 'bg-rose-500/10 text-rose-300',
+  'LA RIOJA':         'bg-indigo-500/10 text-indigo-300',
+  'CATAMARCA':        'bg-teal-500/10 text-teal-300',
+  'CORDOBA':          'bg-cyan-500/10 text-cyan-300',
 };
 
 // ── State ───────────────────────────────────────────────────
@@ -369,9 +382,6 @@ let allVendors = [];
 let photos     = {};    // key → url
 let lastPosts  = {};    // key → { instagram, tiktok, facebook }
 let uploadKey  = null;
-let campanasData = [];
-let diarioData   = [];
-let adsDetailVendor = null;
 
 // ── Helpers ─────────────────────────────────────────────────
 function vendorKey(nombre) {
@@ -400,11 +410,11 @@ function timeAgo(dateStr) {
 }
 
 function dateColor(dateStr) {
-  if (!dateStr) return 'text-slate-300';
+  if (!dateStr) return 'text-slate-600';
   const days = Math.floor((Date.now() - new Date(dateStr)) / 86400000);
-  if (days <= 7)  return 'text-green-600 font-semibold';
-  if (days <= 30) return 'text-yellow-500 font-semibold';
-  return 'text-red-500 font-semibold';
+  if (days <= 7)  return 'text-emerald-400 font-semibold';
+  if (days <= 30) return 'text-amber-400 font-semibold';
+  return 'text-red-400 font-semibold';
 }
 
 function initials(nombre) {
@@ -414,7 +424,7 @@ function initials(nombre) {
 function showToast(msg, error = false) {
   const t = document.getElementById('toast');
   t.textContent = msg;
-  t.className = `fixed bottom-5 right-5 text-sm px-4 py-2.5 rounded-xl shadow-xl text-white ${error ? 'bg-red-600' : 'bg-slate-800'}`;
+  t.className = `fixed bottom-5 right-5 show text-sm px-4 py-2.5 rounded-xl shadow-xl text-white flex items-center gap-2 ${error ? 'bg-red-600' : 'bg-slate-800'}`;
   t.classList.remove('hidden');
   setTimeout(() => t.classList.add('hidden'), 3000);
 }
@@ -473,33 +483,29 @@ function socialRow(iconClass, colorClass, url, lastPost, vendorName) {
   const handle  = extractHandle(url);
   const ago     = timeAgo(lastPost);
   const color   = dateColor(lastPost);
-  const hasEmbed = !!embedUrl(url);
-
   if (!url) return `
-    <div class="flex items-center gap-1.5 text-slate-200">
-      <i class="${iconClass} text-xs w-3.5 text-center"></i>
-      <span class="text-xs italic text-slate-300">—</span>
+    <div class="flex items-center gap-1.5 text-slate-600">
+      <i class="${iconClass} text-xs w-3.5 text-center opacity-40"></i>
+      <span class="text-xs italic text-slate-600">sin cuenta</span>
     </div>`;
 
-  const handleClick = hasEmbed
-    ? `onclick="openEmbed('${url}','${iconClass}','${colorClass}','${vendorName}','${handle}')" style="cursor:pointer"`
-    : `onclick="window.open('${url}','_blank')" style="cursor:pointer"`;
+  const handleClick = `onclick="openEmbed('${url}','${iconClass}','${colorClass}','${vendorName}','${handle}')" style="cursor:pointer"`;
 
   return `
-    <div class="flex items-center gap-1.5 relative group/row">
+    <div class="flex items-center gap-1.5 relative group/row rounded-lg -mx-1 px-1 py-0.5 hover:bg-white/5 transition-colors">
       <a href="${url}" target="_blank" class="social-link ${colorClass}">
         <i class="${iconClass} text-xs w-3.5 text-center"></i>
       </a>
-      <span class="text-xs truncate flex-1 max-w-20 text-blue-500 hover:text-blue-700 hover:underline"
+      <span class="text-xs truncate flex-1 min-w-0 text-blue-400 hover:text-blue-300 hover:underline"
             ${handleClick}>${handle.startsWith('@') ? handle : '@' + handle}</span>
-      <span class="text-xs ${ago ? color : 'text-slate-300'}">${ago || '—'}</span>
+      <span class="text-[11px] shrink-0 ${ago ? color : 'text-slate-600'} tabular-num">${ago || '—'}</span>
       <!-- Tooltip -->
       <div class="absolute left-0 bottom-full mb-1.5 hidden group-hover/row:flex flex-col gap-1.5
-                  bg-slate-900 text-white rounded-xl p-3 shadow-2xl z-50 w-64 border border-slate-700 pointer-events-none">
+                  surface-2 text-white rounded-xl p-3 shadow-2xl z-50 w-64 border border-white/10 pointer-events-none">
         <div class="flex items-center gap-2">
           <i class="${iconClass} ${colorClass} text-sm"></i>
           <span class="font-semibold text-sm">${handle.startsWith('@') ? handle : '@' + handle}</span>
-          ${hasEmbed ? '<span class="ml-auto text-xs text-blue-400">click para preview</span>' : ''}
+          <span class="ml-auto text-xs text-blue-400">click para preview</span>
         </div>
         <p class="text-xs text-slate-400 break-all leading-relaxed">${url}</p>
       </div>
@@ -516,49 +522,49 @@ function renderCard(v) {
   const tt     = (v['TikTok'] || '').trim();
   const fb     = (v['Fan Page'] || '').trim();
   const wa     = (v['Número de Whastapp Corporativo'] || '').trim();
-  const badge  = AREA_COLORS[area] || 'bg-slate-100 text-slate-600';
+  const badge  = AREA_COLORS[area] || 'bg-slate-500/10 text-slate-400';
 
   const displayName = nombre.split(/\s+/).slice(0, 3).join(' ');
 
   const photoHTML = photo
     ? `<img src="${photo}" class="w-full h-full object-cover" id="img-${key}" alt="${nombre}">`
-    : `<span class="text-2xl font-bold text-slate-400" id="img-${key}">${initials(nombre)}</span>`;
+    : `<span class="text-xl font-bold text-slate-500" id="img-${key}">${initials(nombre)}</span>`;
 
   return `
-    <div class="card bg-white rounded-2xl shadow-sm p-3 flex flex-col gap-2.5"
+    <div class="card rounded-[1.75rem] p-3 flex flex-col gap-2.5"
          data-key="${key}" data-area="${area}"
          data-ig="${!!ig}" data-tt="${!!tt}" data-fb="${!!fb}">
 
       <!-- Photo -->
-      <div class="photo-wrap relative mx-auto" onclick="triggerUpload('${key}')">
-        <div class="w-16 h-16 rounded-full overflow-hidden bg-slate-100 border-2 border-slate-200 flex items-center justify-center" id="photo-wrap-${key}">
+      <div class="photo-wrap relative mx-auto z-10" onclick="triggerUpload('${key}')">
+        <div class="photo-ring w-16 h-16 rounded-full overflow-hidden surface-2 border-2 border-white/10 ring-1 ring-white/5 flex items-center justify-center" id="photo-wrap-${key}">
           ${photoHTML}
         </div>
-        <div class="cam-overlay absolute inset-0 rounded-full bg-black/50 flex items-center justify-center">
+        <div class="cam-overlay absolute inset-0 rounded-full bg-slate-950/60 flex items-center justify-center">
           <i class="fas fa-camera text-white text-sm"></i>
         </div>
-        <div id="upload-spinner-${key}" class="hidden absolute inset-0 rounded-full bg-black/60 flex items-center justify-center">
+        <div id="upload-spinner-${key}" class="hidden absolute inset-0 rounded-full bg-slate-950/70 flex items-center justify-center">
           <i class="fas fa-spinner fa-spin text-white text-sm"></i>
         </div>
       </div>
 
       <!-- Name & Area -->
-      <div class="text-center leading-tight">
-        <p class="text-xs font-semibold text-slate-700">${displayName}</p>
+      <div class="text-center leading-tight z-10">
+        <p class="text-xs font-semibold text-slate-200">${displayName}</p>
           <span class="inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${badge}">${area}</span>
       </div>
 
       <!-- Social -->
-      <div class="flex flex-col gap-1 border-t border-slate-100 pt-2">
-        ${socialRow('fab fa-instagram', 'text-pink-500 hover:text-pink-600', ig, posts.instagram, nombre)}
-        ${socialRow('fab fa-tiktok',    'text-slate-700 hover:text-slate-900', tt, posts.tiktok, nombre)}
-        ${socialRow('fab fa-facebook',  'text-blue-500 hover:text-blue-700', fb, posts.facebook, nombre)}
+      <div class="flex flex-col gap-0.5 border-t border-white/5 pt-2 z-10">
+        ${socialRow('fab fa-instagram', 'text-pink-400 hover:text-pink-300', ig, posts.instagram, nombre)}
+        ${socialRow('fab fa-tiktok',    'text-slate-300 hover:text-white', tt, posts.tiktok, nombre)}
+        ${socialRow('fab fa-facebook',  'text-blue-400 hover:text-blue-300', fb, posts.facebook, nombre)}
       </div>
 
       <!-- WhatsApp -->
       ${wa ? `
         <a href="https://wa.me/54${wa}" target="_blank"
-           class="flex items-center justify-center gap-1.5 py-1 bg-green-50 hover:bg-green-100 text-green-700 rounded-lg text-xs font-medium transition-colors">
+           class="wa-btn btn-press z-10 flex items-center justify-center gap-1.5 py-1.5 text-white rounded-xl text-xs font-medium">
           <i class="fab fa-whatsapp"></i> ${wa}
         </a>` : ''}
     </div>`;
@@ -568,17 +574,20 @@ function renderCard(v) {
 function renderAll() {
   const search = document.getElementById('search').value.toLowerCase();
   const area   = document.getElementById('filter-area').value;
+  const fuerza = document.getElementById('filter-fuerza').value;
   const red    = document.getElementById('filter-red').value;
 
   const filtered = allVendors.filter(v => {
     const nombre  = (v['Nombre completo'] || '').toLowerCase();
     const vArea   = (v['Area'] || '').trim();
+    const vFuerza = (v['Fuerza de Venta'] || '').trim();
     const ig      = !!(v['Instagram'] || '').trim();
     const tt      = !!(v['TikTok'] || '').trim();
     const fb      = !!(v['Fan Page'] || '').trim();
 
     if (search && !nombre.includes(search) && !vArea.toLowerCase().includes(search)) return false;
     if (area && vArea !== area) return false;
+    if (fuerza && vFuerza !== fuerza) return false;
     if (red === 'instagram'  && !ig) return false;
     if (red === 'tiktok'     && !tt) return false;
     if (red === 'facebook'   && !fb) return false;
@@ -604,13 +613,49 @@ function buildAreaFilter() {
   document.getElementById('stat-tt').textContent    = `🎵 TK: ${tt}`;
   document.getElementById('stat-fb').textContent    = `👍 FB: ${fb}`;
   if (noRed > 0) document.getElementById('stat-warn').textContent = `⚠️ Sin redes: ${noRed}`;
+
+  const select = document.getElementById('filter-area');
+  const areas = [...new Set(allVendors.map(v => (v['Area'] || '').trim()).filter(Boolean))].sort();
+  select.innerHTML = '<option value="">Todas las sucursales</option>' +
+    areas.map(a => `<option value="${a}">${a}</option>`).join('');
+}
+
+function buildFuerzaFilter() {
+  const select = document.getElementById('filter-fuerza');
+  const fuerzas = [...new Set(allVendors.map(v => (v['Fuerza de Venta'] || '').trim()).filter(Boolean))].sort();
+  select.innerHTML = '<option value="">Todas las fuerzas de venta</option>' +
+    fuerzas.map(f => `<option value="${f}">${f}</option>`).join('');
+}
+
+function buildListaFilters() {
+  const areaSelect = document.getElementById('filter-area-lista');
+  const areas = [...new Set(allVendors.map(v => (v['Area'] || '').trim()).filter(Boolean))].sort();
+  areaSelect.innerHTML = '<option value="">Todas las sucursales</option>' +
+    areas.map(a => `<option value="${a}">${a}</option>`).join('');
+
+  const puestoSelect = document.getElementById('filter-puesto-lista');
+  const puestos = [...new Set(allVendors.map(v => (v['Fuerza de Venta'] || '').trim()).filter(Boolean))].sort();
+  puestoSelect.innerHTML = '<option value="">Todos los puestos</option>' +
+    puestos.map(p => `<option value="${p}">${p}</option>`).join('');
 }
 
 // ── Lista completa ────────────────────────────────────────────
 let chartInstance = null;
 
 function getFilteredVendors() {
-  return allVendors;
+  const search = document.getElementById('search-lista').value.toLowerCase();
+  const area   = document.getElementById('filter-area-lista').value;
+  const puesto = document.getElementById('filter-puesto-lista').value;
+
+  return allVendors.filter(v => {
+    const nombre  = (v['Nombre completo'] || '').toLowerCase();
+    const vArea   = (v['Area'] || '').trim();
+    const vPuesto = (v['Fuerza de Venta'] || '').trim();
+    if (search && !nombre.includes(search) && !vArea.toLowerCase().includes(search)) return false;
+    if (area && vArea !== area) return false;
+    if (puesto && vPuesto !== puesto) return false;
+    return true;
+  });
 }
 
 function renderListaCompleta() {
@@ -627,18 +672,23 @@ function renderListaCompleta() {
     const tt = (v['TikTok'] || '').trim();
     const fb = (v['Fan Page'] || '').trim();
     const wa = (v['Número de Whastapp Corporativo'] || '').trim();
-    return `<tr class="border-b border-slate-50 hover:bg-slate-50 transition-colors">
-      <td class="px-4 py-2.5 text-slate-400 text-xs font-mono">${i + 1}</td>
-      <td class="px-4 py-2.5 font-medium text-slate-700">${v['Nombre completo']}</td>
-      <td class="px-4 py-2.5 text-slate-500">${v['Area'] || '—'}</td>
-      <td class="px-3 py-2.5 text-center">${ig ? '<i class="fas fa-check text-green-500"></i>' : '<i class="fas fa-times text-slate-200"></i>'}</td>
-      <td class="px-3 py-2.5 text-center">${tt ? '<i class="fas fa-check text-green-500"></i>' : '<i class="fas fa-times text-slate-200"></i>'}</td>
-      <td class="px-3 py-2.5 text-center">${fb ? '<i class="fas fa-check text-green-500"></i>' : '<i class="fas fa-times text-slate-200"></i>'}</td>
-      <td class="px-3 py-2.5 text-center">${wa ? '<i class="fas fa-check text-green-500"></i>' : '<i class="fas fa-times text-slate-200"></i>'}</td>
+    const dot = (has) => has
+      ? '<i class="fas fa-circle-check text-emerald-400"></i>'
+      : '<i class="fas fa-circle text-slate-700 text-[6px]"></i>';
+    return `<tr class="border-b border-white/5 hover:bg-white/5 transition-colors">
+      <td class="px-4 py-2.5 text-slate-500 text-xs font-mono tabular-num">${i + 1}</td>
+      <td class="px-4 py-2.5 font-medium text-slate-200">${v['Nombre completo']}</td>
+      <td class="px-4 py-2.5 text-slate-400">${v['Area'] || '—'}</td>
+      <td class="px-4 py-2.5 text-slate-400">${v['Fuerza de Venta'] || '—'}</td>
+      <td class="px-3 py-2.5 text-center">${dot(ig)}</td>
+      <td class="px-3 py-2.5 text-center">${dot(tt)}</td>
+      <td class="px-3 py-2.5 text-center">${dot(fb)}</td>
+      <td class="px-3 py-2.5 text-center">${dot(wa)}</td>
     </tr>`;
   }).join('');
 
   document.getElementById('lista-count').textContent = `${sorted.length} vendedores`;
+  document.getElementById('lista-filter-count').textContent = `${sorted.length} vendedor${sorted.length !== 1 ? 'es' : ''}`;
 
   // KPIs
   const areas = [...new Set(filtered.map(v => (v['Area'] || '').trim()).filter(Boolean))];
@@ -679,8 +729,8 @@ function renderListaChart() {
       responsive: true, maintainAspectRatio: false,
       plugins: { legend: { display: false } },
       scales: {
-        y: { beginAtZero: true, ticks: { stepSize: 1, color: '#94a3b8', font: { size: 11 } }, grid: { color: '#f1f5f9' } },
-        x: { ticks: { color: '#64748b', font: { size: 11 } }, grid: { display: false } }
+        y: { beginAtZero: true, ticks: { stepSize: 1, color: '#64748b', font: { size: 11 } }, grid: { color: 'rgba(255,255,255,.06)' } },
+        x: { ticks: { color: '#94a3b8', font: { size: 11 } }, grid: { display: false } }
       }
     }
   });
@@ -733,14 +783,30 @@ document.getElementById('file-input').addEventListener('change', async (e) => {
 // ── Embed Modal ───────────────────────────────────────────────
 window.openEmbed = function(url, iconClass, colorClass, nombre, handle) {
   const eUrl = embedUrl(url);
-  if (!eUrl) return;
 
   document.getElementById('modal-icon').className     = `${iconClass} ${colorClass} text-lg`;
   document.getElementById('modal-name').textContent   = nombre;
   document.getElementById('modal-handle').textContent = handle.startsWith('@') ? handle : '@' + handle;
   document.getElementById('modal-link').href          = url;
-  document.getElementById('modal-loading').style.display = '';
-  document.getElementById('embed-iframe').src         = eUrl;
+
+  const iframe   = document.getElementById('embed-iframe');
+  const loading  = document.getElementById('modal-loading');
+  const noEmbed  = document.getElementById('modal-no-embed');
+
+  if (eUrl) {
+    noEmbed.classList.add('hidden');
+    loading.style.display = '';
+    iframe.classList.remove('hidden');
+    iframe.src = eUrl;
+  } else {
+    loading.style.display = 'none';
+    iframe.classList.add('hidden');
+    iframe.src = '';
+    document.getElementById('modal-no-embed-icon').className = `${iconClass} text-4xl ${colorClass}`;
+    document.getElementById('modal-no-embed-link').href = url;
+    noEmbed.classList.remove('hidden');
+  }
+
   document.getElementById('embed-modal').classList.remove('hidden');
   document.body.style.overflow = 'hidden';
 };
@@ -751,135 +817,41 @@ window.closeModal = function() {
   document.body.style.overflow = '';
 };
 
-// ── Resumen por sucursal ──────────────────────────────────────
-function renderResumen() {
-  const areas = [...new Set(allVendors.map(v => (v['Area'] || '').trim()).filter(Boolean))].sort();
-  const tbody = document.getElementById('resumen-body');
-
-  // Agrupar ads por sucursal
-  const adsByArea = {};
-  for (const a of adsData) {
-    const area = (a['Sucursal'] || a['sucursal'] || '').trim();
-    if (!area) continue;
-    if (!adsByArea[area]) adsByArea[area] = { gasto: 0, imp: 0, leads: 0, conv: 0 };
-    adsByArea[area].gasto += parseFloat(String(a['Gasto Mes'] || a['gasto'] || '0').replace(',', '.'));
-    adsByArea[area].imp   += parseInt(a['Impresiones'] || a['impresiones'] || '0');
-    adsByArea[area].leads += parseInt(a['Leads'] || a['leads'] || '0');
-    adsByArea[area].conv  += parseInt(a['Conversaciones'] || a['conversaciones'] || '0');
-  }
-
-  const adsNum = (v) => { const s = String(v ?? '').replace(',', '.').trim(); const n = parseFloat(s); return isNaN(n) ? 0 : n; };
-  const money = (n) => n ? '$' + adsNum(n).toLocaleString('es-AR', { minimumFractionDigits: 0 }) : '—';
-
-  const rows = areas.map(area => {
-    const vends  = allVendors.filter(v => (v['Area'] || '').trim() === area);
-    const total  = vends.length;
-    const ig     = vends.filter(v => v['Instagram']).length;
-    const tt     = vends.filter(v => v['TikTok']).length;
-    const fb     = vends.filter(v => v['Fan Page']).length;
-    const noRed  = vends.filter(v => !v['Instagram'] && !v['TikTok'] && !v['Fan Page']).length;
-    const ad     = adsByArea[area] || {};
-
-    const bar = (n, t, color) => {
-      const pct = t ? Math.round(n / t * 100) : 0;
-      return `<div class="flex items-center gap-1 justify-center">
-        <span class="${n === t ? 'font-semibold' : ''}">${n}</span>
-        <div class="w-8 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-          <div class="h-full ${color} rounded-full" style="width:${pct}%"></div>
-        </div>
-      </div>`;
-    };
-
-    return `<tr class="border-b border-slate-50 hover:bg-slate-50 cursor-pointer transition-colors"
-                onclick="filtrarSucursal('${area}')">
-      <td class="px-3 py-2.5 font-medium text-slate-700 text-sm">${area}</td>
-      <td class="px-2 py-2.5 text-center font-bold text-slate-800 text-xs">${total}</td>
-      <td class="px-2 py-2.5 text-xs">${bar(ig, total, 'bg-pink-400')}</td>
-      <td class="px-2 py-2.5 text-xs">${bar(tt, total, 'bg-slate-600')}</td>
-      <td class="px-2 py-2.5 text-xs">${bar(fb, total, 'bg-blue-400')}</td>
-      <td class="px-2 py-2.5 text-center text-xs ${noRed > 0 ? 'text-red-400 font-semibold' : 'text-slate-300'}">${noRed || '—'}</td>
-      <td class="px-2 py-2.5 text-center font-mono text-blue-600 text-xs">${ad.gasto ? money(ad.gasto) : '—'}</td>
-      <td class="px-2 py-2.5 text-center font-mono text-xs">${ad.imp ? adsNum(ad.imp).toLocaleString('es-AR') : '—'}</td>
-      <td class="px-2 py-2.5 text-center font-bold text-amber-600 text-xs">${ad.leads ? adsNum(ad.leads).toLocaleString('es-AR') : '—'}</td>
-      <td class="px-2 py-2.5 text-center font-bold text-indigo-600 text-xs">${ad.conv ? adsNum(ad.conv).toLocaleString('es-AR') : '—'}</td>
-    </tr>`;
-  });
-
-  // Total row
-  const tot   = allVendors.length;
-  const totIg = allVendors.filter(v => v['Instagram']).length;
-  const totTt = allVendors.filter(v => v['TikTok']).length;
-  const totFb = allVendors.filter(v => v['Fan Page']).length;
-  const totNo = allVendors.filter(v => !v['Instagram'] && !v['TikTok'] && !v['Fan Page']).length;
-  const totAd = Object.values(adsByArea).reduce((a, b) => ({ gasto: a.gasto + b.gasto, imp: a.imp + b.imp, leads: a.leads + b.leads, conv: a.conv + b.conv }), { gasto: 0, imp: 0, leads: 0, conv: 0 });
-
-  rows.push(`<tr class="bg-slate-50 font-semibold text-slate-600 border-t border-slate-200">
-    <td class="px-3 py-2.5 text-sm">TOTAL</td>
-    <td class="px-2 py-2.5 text-center text-slate-800 text-xs">${tot}</td>
-    <td class="px-2 py-2.5 text-center text-pink-500 text-xs">${totIg}</td>
-    <td class="px-2 py-2.5 text-center text-slate-700 text-xs">${totTt}</td>
-    <td class="px-2 py-2.5 text-center text-blue-500 text-xs">${totFb}</td>
-    <td class="px-2 py-2.5 text-center text-xs ${totNo > 0 ? 'text-red-400' : 'text-slate-300'}">${totNo || '—'}</td>
-    <td class="px-2 py-2.5 text-center font-mono text-blue-600 text-xs">${money(totAd.gasto)}</td>
-    <td class="px-2 py-2.5 text-center font-mono text-xs">${totAd.imp.toLocaleString('es-AR')}</td>
-    <td class="px-2 py-2.5 text-center font-bold text-amber-600 text-xs">${totAd.leads.toLocaleString('es-AR')}</td>
-    <td class="px-2 py-2.5 text-center font-bold text-indigo-600 text-xs">${totAd.conv.toLocaleString('es-AR')}</td>
-  </tr>`);
-
-  tbody.innerHTML = rows.join('');
-}
-
-window.filtrarSucursal = function(area) {
-  document.getElementById('filter-area').value = area;
-  setTab('vendedores');
-  renderAll();
-};
-
 window.setTab = function(tab) {
   const isVend  = tab === 'vendedores';
-  const isRes   = tab === 'resumen';
-  const isAds   = tab === 'anuncios';
   const isLista = tab === 'lista';
   document.getElementById('vista-vendedores').classList.toggle('hidden', !isVend);
-  document.getElementById('vista-resumen').classList.toggle('hidden', !isRes);
-  document.getElementById('vista-anuncios').classList.toggle('hidden', !isAds);
   document.getElementById('vista-lista').classList.toggle('hidden', !isLista);
 
-  const activeClass   = ['border-blue-500', 'text-blue-600', 'bg-white'];
-  const inactiveClass = ['border-transparent', 'text-slate-400', 'bg-slate-100'];
+  const activeClass   = ['is-active', 'text-white'];
+  const inactiveClass = ['text-slate-400'];
 
   const tVend   = document.getElementById('tab-vendedores');
-  const tRes    = document.getElementById('tab-resumen');
-  const tAds    = document.getElementById('tab-anuncios');
   const tLista  = document.getElementById('tab-lista');
 
-  activeClass.forEach(c => { tVend.classList.toggle(c, isVend); tRes.classList.toggle(c, isRes); tAds.classList.toggle(c, isAds); tLista.classList.toggle(c, isLista); });
-  inactiveClass.forEach(c => { tVend.classList.toggle(c, !isVend); tRes.classList.toggle(c, !isRes); tAds.classList.toggle(c, !isAds); tLista.classList.toggle(c, !isLista); });
+  activeClass.forEach(c => { tVend.classList.toggle(c, isVend); tLista.classList.toggle(c, isLista); });
+  inactiveClass.forEach(c => { tVend.classList.toggle(c, !isVend); tLista.classList.toggle(c, !isLista); });
 
   if (isLista) setTimeout(renderListaChart, 100);
+  if (window.innerWidth < 768) toggleSidebar(false);
 };
 
-// ── Meta Ads ─────────────────────────────────────────────────
-let adsData = [];
-let adsDateFilterActive = false;
+window.toggleSidebar = function(force) {
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('sidebar-overlay');
+  const open = force !== undefined ? force : !sidebar.classList.contains('open');
+  sidebar.classList.toggle('open', open);
+  overlay.classList.toggle('open', open);
+};
 
-function parseSheetCsv(url) {
-  return new Promise(resolve => {
-    const done = (d) => { clearTimeout(t); resolve(d); };
-    const t = setTimeout(() => { console.warn('Timeout parseSheetCsv:', url.slice(-30)); done([]); }, 8000);
-    Papa.parse(url, {
-      download: true, header: true, skipEmptyLines: true,
-      complete: r => done(r.data),
-      error: () => done([]),
-    });
-  });
-}
-
-const INTERNAL_VENDORS = [
-  'MyA Equipamientos Comerciales',
-  'SD - M&A Equipamientos Comerciales  - Self',
-  'SD/Tonal  - M&A Equipamientos Comerciales - Self',
-];
+// ── Card spotlight (uiverse-style cursor-tracked border glow) ─
+document.getElementById('grid').addEventListener('mousemove', (e) => {
+  const card = e.target.closest('.card');
+  if (!card) return;
+  const rect = card.getBoundingClientRect();
+  card.style.setProperty('--mx', `${e.clientX - rect.left}px`);
+  card.style.setProperty('--my', `${e.clientY - rect.top}px`);
+});
 
 const BAJA_VENDORS = [
   'FUNES BURGOS FACUNDO JAVIER',
@@ -887,11 +859,12 @@ const BAJA_VENDORS = [
   'OLMOS MATIAS EXEQUIEL',
   'VIDELA GAMBOA CARLA BELEN',
   'GUTIERREZ JONATHAN PEDRO',
+  'AREDEZ MARIA CELESTE',
+  'ANDRADE SOFIA AYELEN',
+  'VILTE JOEL DIEGO',
 ];
 
-const EXTRA_VENDORS = [
-  { 'Area': 'JUJUY', 'Nombre completo': 'VILTE JOEL', 'Instagram': '', 'TikTok': '', 'Fan Page': '', 'Número de Whastapp Corporativo': '', 'Fuerza de Venta': 'Redes Sociales' },
-];
+const EXTRA_VENDORS = [];
 
 const OVERRIDE_FORCE = {
   'VILLAFAÑE JOSE LUIS ANGEL': 'Showroom',
@@ -900,191 +873,6 @@ const OVERRIDE_FORCE = {
 function isBaja(nombre) {
   return BAJA_VENDORS.includes((nombre || '').trim().toUpperCase());
 }
-
-async function loadAds() {
-  const [resumen, campanas, diario] = await Promise.all([
-    parseSheetCsv(META_ADS_URL),
-    parseSheetCsv(CAMPANAS_URL),
-    parseSheetCsv(DIARIO_URL),
-  ]);
-  adsData = resumen.filter(d => d['Vendedor'] && d['Vendedor'].trim() && !INTERNAL_VENDORS.includes(d['Vendedor'].trim()) && !isBaja(d['Vendedor'].trim()));
-  campanasData = campanas.filter(d => d['Campana'] && d['Campana'].trim()).filter(d => !isBaja(d['Vendedor']));
-  diarioData = diario.filter(d => d['Fecha'] && d['Vendedor'] && d['Vendedor'].trim() && !INTERNAL_VENDORS.includes(d['Vendedor'].trim()) && !isBaja(d['Vendedor'].trim()));
-  setDefaultDateRange();
-  renderAdsTable();
-}
-
-function setDefaultDateRange() {
-  if (diarioData.length) {
-    const fechas = diarioData.map(d => d['Fecha']).filter(Boolean).sort();
-    if (fechas.length) {
-      document.getElementById('ads-desde').value = fechas[0];
-    }
-  }
-  document.getElementById('ads-hasta').value = new Date().toISOString().slice(0, 10);
-}
-
-window.applyDateFilter = function() {
-  const desde = document.getElementById('ads-desde').value;
-  const hasta = document.getElementById('ads-hasta').value;
-  if (!desde && !hasta) { clearDateFilter(); return; }
-  adsDateFilterActive = !!(desde || hasta);
-
-  if (adsDateFilterActive && diarioData.length) {
-    const filtered = diarioData.filter(d => {
-      if (!d['Fecha']) return false;
-      if (desde && d['Fecha'] < desde) return false;
-      if (hasta && d['Fecha'] > hasta) return false;
-      return true;
-    });
-    const grouped = {};
-    for (const d of filtered) {
-      const key = (d['Vendedor'] || '').trim();
-      if (!key) continue;
-      if (!grouped[key]) grouped[key] = { vendedor: key, sucursal: d['Sucursal'] || '', gasto: 0, impresiones: 0, clics: 0, leads: 0, alcance: 0, conversaciones: 0, campanas: 0, count: 0 };
-      grouped[key].gasto += parseFloat(d['Gasto']) || 0;
-      grouped[key].impresiones += parseInt(d['Impresiones']) || 0;
-      grouped[key].clics += parseInt(d['Clics']) || 0;
-      grouped[key].leads += parseInt(d['Leads']) || 0;
-      grouped[key].alcance += parseInt(d['Alcance']) || 0;
-      grouped[key].conversaciones += parseInt(d['Conversaciones']) || 0;
-      grouped[key].campanas = Math.max(grouped[key].campanas, parseInt(d['Campanas Activas']) || 0);
-      grouped[key].count++;
-    }
-    renderAdsTableFrom(Object.values(grouped));
-    const info = document.getElementById('ads-range-info');
-    info.textContent = `Mostrando ${Object.keys(grouped).length} vendedores en el rango seleccionado`;
-  } else {
-    renderAdsTable();
-  }
-};
-
-window.clearDateFilter = function() {
-  adsDateFilterActive = false;
-  document.getElementById('ads-desde').value = '';
-  document.getElementById('ads-hasta').value = new Date().toISOString().slice(0, 10);
-  document.getElementById('ads-range-info').textContent = '';
-  renderAdsTable();
-};
-
-function renderAdsTable() {
-  renderAdsTableFrom(adsData);
-}
-
-function renderAdsTableFrom(data) {
-  const tbody = document.getElementById('ads-body');
-  const loading = document.getElementById('ads-loading');
-  if (loading) loading.style.display = 'none';
-
-  if (!data.length) {
-    tbody.innerHTML = '<tr><td colspan="16" class="text-center py-8 text-slate-400">Sin datos de anuncios</td></tr>';
-    return;
-  }
-
-  const adsNum = (v) => { const s = String(v ?? '').replace(',', '.').trim(); const n = parseFloat(s); return isNaN(n) ? 0 : n; };
-  const fmt = (n) => n || n === 0 ? adsNum(n).toLocaleString('es-AR') : '—';
-  const money = (n) => n ? '$' + adsNum(n).toLocaleString('es-AR', { minimumFractionDigits: 2 }) : '—';
-
-  tbody.innerHTML = data.map(r => {
-    const name = r['Vendedor'] || r['vendedor'] || '';
-    const key = vendorKey(name);
-    const photo = photos[key] || null;
-    const initialsStr = initials(name);
-    const area = r['Sucursal'] || r['sucursal'] || '';
-    const camp = r['Campanas Activas'] || r['campanas'] || '';
-    const hoy  = r['Gasto Hoy'] || '';
-    const mes  = r['Gasto Mes'] || r['gasto'] || '';
-    const imp  = r['Impresiones'] || r['impresiones'] || '';
-    const clic = r['Clics'] || r['clics'] || '';
-    const leads = r['Leads'] || r['leads'] || '';
-    const alcance = r['Alcance'] || r['alcance'] || '';
-    const conv = r['Conversaciones'] || r['conversaciones'] || '';
-    const ctr  = r['CTR'] || '';
-    const cpm  = r['CPM'] || '';
-    const cpc  = r['CPC'] || '';
-    const cpl  = r['Costo/Lead'] || '';
-    const cpres = r['Costo/Resultado'] || r['cost_per_result'] || '';
-
-    const safe = name.replace(/'/g, "\\'");
-    return `<tr class="border-b border-slate-50 hover:bg-blue-50/40 transition-colors cursor-pointer" onclick="showAdsDetail('${safe}')">
-      <td class="px-2 py-2.5 text-center">${photo ? `<img src="${photo}" class="w-8 h-8 rounded-full object-cover mx-auto">` : `<span class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-purple-400 text-white text-[10px] font-bold flex items-center justify-center mx-auto">${initialsStr}</span>`}</td>
-      <td class="px-4 py-2.5 font-medium text-blue-600 hover:text-blue-800">${name}</td>
-      <td class="px-4 py-2.5 text-slate-500">${area || '—'}</td>
-      <td class="px-3 py-2.5 text-center font-bold text-emerald-600">${camp}</td>
-      <td class="px-3 py-2.5 text-center font-mono text-blue-600">${money(hoy)}</td>
-      <td class="px-3 py-2.5 text-center font-mono text-blue-600">${money(mes)}</td>
-      <td class="px-3 py-2.5 text-center font-mono">${fmt(imp)}</td>
-      <td class="px-3 py-2.5 text-center font-mono">${fmt(alcance)}</td>
-      <td class="px-3 py-2.5 text-center font-mono">${fmt(clic)}</td>
-      <td class="px-3 py-2.5 text-center font-bold text-amber-600">${fmt(leads)}</td>
-      <td class="px-3 py-2.5 text-center font-bold text-indigo-600">${fmt(conv)}</td>
-      <td class="px-3 py-2.5 text-center text-slate-500">${ctr || '—'}</td>
-      <td class="px-3 py-2.5 text-center text-slate-500">${cpm || '—'}</td>
-      <td class="px-3 py-2.5 text-center text-slate-500">${cpc || '—'}</td>
-      <td class="px-3 py-2.5 text-center text-slate-500">${cpl || '—'}</td>
-      <td class="px-3 py-2.5 text-center font-semibold text-rose-600">${cpres || '—'}</td>
-    </tr>`;
-  }).join('');
-
-  const el = document.getElementById('ads-date');
-  if (el) el.textContent = new Date().toLocaleString('es-AR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
-}
-
-window.showAdsDetail = function(vendorName) {
-  adsDetailVendor = vendorName;
-  const camps = campanasData.filter(c => {
-    const v = (c['Vendedor'] || '').trim().toLowerCase();
-    return v === vendorName.trim().toLowerCase();
-  });
-  document.getElementById('ads-detail-vendor').textContent = vendorName;
-  const branch = camps.length ? camps[0]['Sucursal'] : '';
-  document.getElementById('ads-detail-branch').textContent = branch ? `(${branch})` : '';
-  document.getElementById('ads-detail-date').textContent = camps.length ? `Actualizado: ${camps[0]['Fecha'] || ''}` : '';
-
-  const tbody = document.getElementById('ads-detail-body');
-  if (!camps.length) {
-    tbody.innerHTML = '<tr><td colspan="15" class="text-center py-8 text-slate-400">Sin campanas activas</td></tr>';
-  } else {
-    const adsNum = (v) => { const s = String(v ?? '').replace(',', '.').trim(); const n = parseFloat(s); return isNaN(n) ? 0 : n; };
-    const fmt = (n) => n || n === 0 ? adsNum(n).toLocaleString('es-AR') : '—';
-    const money = (n) => n ? '$' + adsNum(n).toLocaleString('es-AR', { minimumFractionDigits: 2 }) : '—';
-    const estadoClass = (s) => s === 'ACTIVE' ? 'text-emerald-600' : 'text-slate-400';
-    const antiguedadText = (d) => {
-      if (!d && d !== 0) return '—';
-      const n = Number(d);
-      if (n === 0) return 'Hoy';
-      if (n === 1) return '1 día';
-      if (n < 30) return `${n} días`;
-      if (n < 365) return `${Math.floor(n / 30)} meses`;
-      return `${Math.floor(n / 365)} años`;
-    };
-
-    tbody.innerHTML = camps.map(c => `<tr class="border-b border-slate-50 hover:bg-blue-50/40 transition-colors">
-      <td class="px-4 py-2.5 font-medium text-slate-700">${c['Campana']}</td>
-      <td class="px-3 py-2.5 text-center font-semibold ${estadoClass(c['Estado'])}">${c['Estado'] === 'ACTIVE' ? 'Activa' : c['Estado'] || '—'}</td>
-      <td class="px-3 py-2.5 text-center text-slate-500">${c['Objetivo'] || '—'}</td>
-      <td class="px-3 py-2.5 text-center text-emerald-600">${antiguedadText(c['Antiguedad'])}</td>
-      <td class="px-3 py-2.5 text-center font-mono text-blue-600">${money(c['Gasto'])}</td>
-      <td class="px-3 py-2.5 text-center font-mono">${fmt(c['Impresiones'])}</td>
-      <td class="px-3 py-2.5 text-center font-mono">${fmt(c['Alcance'])}</td>
-      <td class="px-3 py-2.5 text-center font-mono">${fmt(c['Clics'])}</td>
-      <td class="px-3 py-2.5 text-center font-bold text-amber-600">${fmt(c['Leads'])}</td>
-      <td class="px-3 py-2.5 text-center font-bold text-indigo-600">${fmt(c['Conversaciones'])}</td>
-      <td class="px-3 py-2.5 text-center text-slate-500">${c['CTR'] || '—'}</td>
-      <td class="px-3 py-2.5 text-center text-slate-500">${c['CPC'] || '—'}</td>
-      <td class="px-3 py-2.5 text-center text-slate-500">${c['CPM'] || '—'}</td>
-      <td class="px-3 py-2.5 text-center text-slate-500">${c['Costo/Lead'] || '—'}</td>
-      <td class="px-3 py-2.5 text-center font-semibold text-rose-600">${c['Costo/Resultado'] || '—'}</td>
-    </tr>`).join('');
-  }
-
-  document.getElementById('ads-detail').classList.remove('hidden');
-};
-
-window.closeAdsDetail = function() {
-  adsDetailVendor = null;
-  document.getElementById('ads-detail').classList.add('hidden');
-};
 
 // ── Init ──────────────────────────────────────────────────────
 async function init() {
@@ -1105,8 +893,6 @@ async function init() {
     console.log('init paso 3');
     await loadLastPosts();
     console.log('init paso 4');
-    await loadAds();
-    console.log('init paso 5');
   } catch (e) {
     console.error('init:', e);
     return;
@@ -1116,14 +902,20 @@ async function init() {
   if (loading) loading.remove();
 
   buildAreaFilter();
-  renderStats();
-  renderResumen();
+  buildFuerzaFilter();
+  buildListaFilters();
   renderListaCompleta();
   renderAll();
 
   document.getElementById('search').addEventListener('input', renderAll);
   document.getElementById('filter-area').addEventListener('change', renderAll);
+  document.getElementById('filter-fuerza').addEventListener('change', renderAll);
   document.getElementById('filter-red').addEventListener('change', renderAll);
+
+  const renderLista = () => { renderListaCompleta(); renderListaChart(); };
+  document.getElementById('search-lista').addEventListener('input', renderLista);
+  document.getElementById('filter-area-lista').addEventListener('change', renderLista);
+  document.getElementById('filter-puesto-lista').addEventListener('change', renderLista);
 }
 
 // Global: atrapar cualquier error no manejado
